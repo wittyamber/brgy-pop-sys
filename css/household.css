@@ -1,0 +1,19 @@
+.search-form .input-group {
+    border-radius: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.search-form .form-control {
+    border: none;
+    border-radius: 20px 0 0 20px;
+    padding: 0.5rem 1rem;
+}
+
+.search-form .btn {
+    border-radius: 0 20px 20px 0;
+    padding: 0.5rem 1rem;
+}
+
+.btn.ms-2 {
+    margin-right: 2rem; /* Add this line to add space between the search bar and the button */
+}

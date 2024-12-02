@@ -11,7 +11,10 @@
 <body>
     <div class="background"></div>
     <div class="login-container">
-        <h3>Barangay Population Management</h3>
+        <div class="logo-container">
+            <img src="assets/images/brgylogo.png" alt="Barangay Logo" class="sidebar-logo">
+        </div>
+        <h3>IBPMMS</h3>
         <form action="login.php" method="POST">
             <div class="form-group mb-3">
                 <label for="username">Username</label>
@@ -33,6 +36,10 @@
             </div>
             <button type="submit" class="btn btn-primary w-100">Login</button>
         </form>
+
+        <?php if (isset($_GET['error']) && !empty($_GET['error'])): ?>
+            <div class="alert alert-danger mt-3"><?php echo htmlspecialchars($_GET['error']); ?></div>
+        <?php endif; ?>
     </div>
 </body>
 </html>

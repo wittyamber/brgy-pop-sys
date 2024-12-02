@@ -15,7 +15,7 @@
         $now = new DateTime();
         $age = $now->diff($dob)->y;
 
-        $sql = "UPDATE residents SET first_name=?, middle_name=?, last_name=?, birthdate=?, age=?, address=?, contact_number=? WHERE id=?";
+        $sql = "UPDATE households SET first_name=?, middle_name=?, last_name=?, birthdate=?, age=?, address=?, contact_number=? WHERE id=?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ssssissi", $first_name, $middle_name, $last_name, $birthdate, $age, $address, $contact_number, $id);
 

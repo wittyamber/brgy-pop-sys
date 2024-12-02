@@ -12,8 +12,9 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <img src="assets/images/brgylogo.png" alt="Barangay Logo" class="sidebar-logo">
-            <h4 class="sidebar-title">Barangay System</h4>
+            <h4 class="sidebar-title">IBPMMS</h4>
         </div>
+        <hr></hr>
         <nav class="sidebar-nav">
             <a href="dashboard.php" class="sidebar-link">
                 <i class="fas fa-tachometer-alt"></i>
@@ -23,15 +24,19 @@
                 <i class="fas fa-user-cog"></i>
                 <span>User Management</span>
             </a>
-            <a href="resident_list.php" class="sidebar-link">
+            <a href="household.php" class="sidebar-link">
+                <i class="fas fa-house-user"></i>
+                <span>Household</span>
+            </a>
+            <a href="household_members.php" class="sidebar-link">
                 <i class="fas fa-list"></i>
                 <span>Masterlist</span>
             </a>
-            <a href="add_resident.php" class="sidebar-link">
-                <i class="fas fa-plus-circle"></i>
-                <span>Add Resident</span>
+            <a href="archive.php" class="sidebar-link">
+                <i class="fas fa-archive"></i>
+                <span>Archives Residents</span>
             </a>
-            <a href="generate_report.php" class="sidebar-link">
+            <a href="reports.php" class="sidebar-link">
                 <i class="fas fa-file-alt"></i>
                 <span>Reports</span>
             </a>

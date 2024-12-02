@@ -5,7 +5,7 @@
         $id = $_POST['id'];
 
         // Assuming you have an 'archived' column (type TINYINT) in the residents table
-        $sql = "UPDATE residents SET archived=1 WHERE id=?";
+        $sql = "UPDATE households SET archived=1 WHERE id=?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $id);
 

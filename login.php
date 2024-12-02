@@ -22,7 +22,7 @@
             header("Location: dashboard.php");
             exit;
         } else {
-            header("Location: index.html?error=Invalid username or password");
+            header("Location: index.php?error=Invalid username or password");
             exit;
         }
     }

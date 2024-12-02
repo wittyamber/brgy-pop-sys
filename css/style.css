@@ -14,12 +14,24 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url('../assets/images/background.png'); /* Make sure to add your background image */
+    background-image: url('../assets/images/background.png');
     background-size: cover;
     background-position: center;
     filter: blur(5px);
     z-index: -1;
     opacity: 0.7;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.sidebar-logo {
+    max-width: 130px;
+    margin-right: 10px;
+    display: block; 
 }
 
 .login-container {
@@ -30,26 +42,31 @@ body {
     width: 100%;
     max-width: 400px;
     margin: 20px;
+    text-align: center;
 }
 
 .login-container h3 {
-    text-align: center;
+    margin-top: 0;
     margin-bottom: 1.5rem;
     color: #333;
+    font-weight: bold;
 }
 
 .form-group label {
     color: #555;
     font-weight: 500;
     margin-bottom: 0.5rem;
+    text-align: left;
+    display: block;
 }
 
 .input-group-text {
-    background-color: #f8f9fa;
+    background-color: rgba(255, 255, 255, 0.6);
     border-right: none;
 }
 
 .input-group .form-control {
+    background-color: rgba(255, 255, 255, 0.6); /* Transparent background for input fields */
     border-left: none;
 }
 
@@ -60,7 +77,6 @@ body {
 
 .input-group-text i {
     color: #6c757d;
-    width: 16px;
 }
 
 .btn-primary {
