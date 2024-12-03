@@ -29,8 +29,8 @@
                 <span>Household</span>
             </a>
             <a href="household_members.php" class="sidebar-link">
-                <i class="fas fa-list"></i>
-                <span>Masterlist</span>
+                <i class="fas fa-users"></i>
+                <span>Resident</span>
             </a>
             <a href="archive.php" class="sidebar-link">
                 <i class="fas fa-archive"></i>
@@ -40,6 +40,7 @@
                 <i class="fas fa-file-alt"></i>
                 <span>Reports</span>
             </a>
+            <hr></hr>
             <a href="logout.php" class="sidebar-link">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>

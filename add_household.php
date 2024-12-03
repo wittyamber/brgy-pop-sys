@@ -7,7 +7,7 @@
         $first_name = $_POST['first_name'];
         $middle_name = $_POST['middle_name'] ?? null;
         $birthdate = $_POST['birthdate'];
-        $age = date_diff(date_create($birthdate), date_create('today'))->y; // Calculate age
+        $age = $_POST['age'];
         $civil_status = $_POST['civil_status'];
         $gender = $_POST['gender'];
         $tribe = $_POST['tribe'] ?? null;
@@ -36,8 +36,9 @@
         );
 
         if ($stmt->execute()) {
+            session_start();
             $_SESSION['success_message'] = "Household head added successfully.";
-            header("Location: household.php?msg=Household head added successfully");
+            //header("Location: household.php?msg=Household head added successfully");
         } else {
             echo "Error: " . $stmt->error;
         }

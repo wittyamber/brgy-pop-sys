@@ -1,6 +1,7 @@
 <?php
     require 'config.php';
     include 'side_nav.php';
+    include 'includes/alerts.php';
 
     // Start session if not started already
     if (session_status() === PHP_SESSION_NONE) {
@@ -77,10 +78,6 @@
     }
 
     $total_pages = ceil($total_rows / $limit);
-
-    // Handle success message
-    $success_message = $_SESSION['success_message'] ?? null;
-    unset($_SESSION['success_message']);
 ?>
 
 
@@ -95,20 +92,6 @@
 </head>
 <body>
     <div class="container mt-5">
-        <!-- Success Alert -->
-        <?php if ($success_message): ?>
-            <div class="alert alert-success" role="alert">
-                <?= htmlspecialchars($success_message) ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Error Alert -->
-        <?php if (!empty($error_message)): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?= htmlspecialchars($error_message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
 
         <!-- Household Heads Section -->
         <h2 class="text-center">Household Head</h2>
@@ -178,6 +161,7 @@
                                 data-gender="<?= $household['gender']; ?>"
                                 data-civil-status="<?= $household['civil_status']; ?>"
                                 data-tribe="<?= $household['tribe']; ?>"
+                                data-occupation="<?= $household['occupation']; ?>"
                                 data-address="<?= $household['address']; ?>"
                                 data-contact-number="<?= $household['contact_number']; ?>">
                                 <i class="fas fa-edit"></i>
@@ -239,10 +223,6 @@
                             <label for="birthdate" class="form-label">Birthdate</label>
                             <input type="date" class="form-control" name="birthdate" required oninput="calculateAge()">
                         </div>
-                        <!-- <div class="mb-3">
-                            <label for="age" class="form-label">Age</label>
-                            <input type="number" class="form-control" name="age" readonly>
-                        </div> -->
                         <div class="mb-3">
                             <label for="civilStatus" class="form-label">Civil Status</label>
                             <select class="form-control" name="civil_status">
@@ -250,6 +230,7 @@
                                 <option value="Single">Single</option>
                                 <option value="Married">Married</option>
                                 <option value="Widowed">Widowed</option>
+                                <option value="Live In">Live In</option>
                                 <option value="Separated">Separated</option>
                             </select>
                         </div>
@@ -414,10 +395,6 @@
                             <label for="birthdate" class="form-label">Birthdate</label>
                             <input type="date" class="form-control" name="birthdate" required oninput="calculateAge()" autofocus>
                         </div>
-                        <!-- <div class="mb-3">
-                            <label for="age" class="form-label">Age</label>
-                            <input type="number" class="form-control" name="age" readonly>
-                        </div> -->
                         <div class="mb-3">
                             <label for="civilStatus" class="form-label">Civil Status</label>
                             <select class="form-control" name="civil_status" id="editcivil_status" autofocus>
@@ -425,6 +402,7 @@
                                 <option value="Single">Single</option>
                                 <option value="Married">Married</option>
                                 <option value="Widowed">Widowed</option>
+                                <option value="Live In">Live In</option>
                                 <option value="Separated">Separated</option>
                             </select>
                         </div>
@@ -438,7 +416,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="tribe" class="form-label">Tribe</label>
-                            <select class="form-control" id="editTribe" name="tribe" required>
+                            <select class="form-control" id="editTribe" name="tribe" required autofocus>
                                 <option>-select-</option>
                                 <option value="none">-None-</option>
                                 <option value="Ata Manobo">Ata Manobo</option>
@@ -599,6 +577,7 @@
                 document.getElementById('editGender').value = button.getAttribute('data-gender') || '';
                 document.getElementById('editcivil_status').value = button.getAttribute('data-civil-status') || '';
                 document.getElementById('editTribe').value = button.getAttribute('data-tribe') || '';
+                document.getElementById('editOccupation').value = button.getAttribute('data-occupation') || '';
                 document.getElementById('editAddress').value = button.getAttribute('data-address') || '';
                 document.getElementById('editContactNumber').value = button.getAttribute('data-contact-number') || '';
             });

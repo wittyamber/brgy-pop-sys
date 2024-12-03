@@ -12,39 +12,44 @@
 
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Add New User</h1>
+    
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Add New User</h2>
+            <form>
+                <div>
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name">
+                </div>
+                <div>
+                    <label for="role">Role:</label>
+                    <select id="role" name="role">
+                        <option value="Admin">Admin</option>
+                        <option value="Staff">Staff</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="status">Status:</label>
+                    <select id="status" name="status">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password">
+                </div>
+               
+                <button type="button" class="btn btn-success">Save User</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
+             
+            </form>
         </div>
-        <form action="process_user.php" method="POST">
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input type="text" id="name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="role">Role</label>
-                <select id="role" name="role" required>
-                    <option value="Admin">Admin</option>
-                    <option value="Manager">Staff</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="status">Status</label>
-                <select id="status" name="status" required>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            
-            <div class="btn-group">
-                <button type="submit" class="add-btn">Save User</button>
-                <a href="users.php" style="margin-left: 10px;">Cancel</a>
-            </div>
-        </form>
     </div>
+
+
+  
 </body>
 </html>

@@ -1,19 +1,27 @@
 <?php
-    require 'config.php'; // Include database connection
-    include 'side_nav.php'; // Sidebar navigation
+    require 'config.php'; 
+    include 'side_nav.php';
+    include 'includes/alerts.php';
 
-    // Fetch household members with pagination
+    // Pagination variables
     $limit = 10; // Records per page
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $start = ($page - 1) * $limit;
 
     // Search functionality
-    $search = $_GET['search'] ?? '';
-    $searchCondition = !empty($search) ? "AND (first_name LIKE ? OR last_name LIKE ? OR relationship_to_head LIKE ?)" : '';
+    $search = $_GET['search'] ?? ''; // Get the search query
+    $searchCondition = !empty($search) ? "AND (hm.first_name LIKE ? OR hm.last_name LIKE ? OR hm.relationship_to_head LIKE ?)" : '';
 
-    $sql = "SELECT * FROM household_members WHERE archived = 0 $searchCondition ORDER BY last_name ASC LIMIT ?, ?";
+    // SQL query to fetch members and their household head with optional search
+    $sql = "SELECT hm.*, h.last_name AS head_last_name, h.first_name AS head_first_name 
+            FROM household_members hm 
+            JOIN households h ON hm.household_id = h.household_id 
+            WHERE hm.archived = 0 $searchCondition 
+            ORDER BY hm.last_name ASC 
+            LIMIT ?, ?";
     $stmt = $conn->prepare($sql);
 
+    // Bind parameters based on whether a search query exists
     if (!empty($search)) {
         $searchTerm = '%' . $search . '%';
         $stmt->bind_param("sssii", $searchTerm, $searchTerm, $searchTerm, $start, $limit);
@@ -26,8 +34,19 @@
     $members = $result->fetch_all(MYSQLI_ASSOC);
 
     // Count total records for pagination
-    $total_result = $conn->query("SELECT COUNT(*) AS total FROM household_members WHERE archived = 0");
-    $total_rows = $total_result->fetch_assoc()['total'];
+    $countSql = "SELECT COUNT(*) AS total 
+                FROM household_members hm 
+                JOIN households h ON hm.household_id = h.household_id 
+                WHERE hm.archived = 0 $searchCondition";
+    $countStmt = $conn->prepare($countSql);
+
+    if (!empty($search)) {
+        $countStmt->bind_param("sss", $searchTerm, $searchTerm, $searchTerm);
+    }
+
+    $countStmt->execute();
+    $countResult = $countStmt->get_result();
+    $total_rows = $countResult->fetch_assoc()['total'];
     $total_pages = ceil($total_rows / $limit);
 ?>
 
@@ -38,9 +57,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IBPMMS | Residents</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/household.css">
 </head>
 <body>
     <div class="container mt-5">
+
         <h2 class="text-center">Residents</h2>
 
         <!-- Search Bar and Add Button -->
@@ -67,7 +88,7 @@
         </div>
 
         <!-- Members Table -->
-        <table class="table table-bordered">
+        <table class="table table-bordered table-striped">
             <thead>
                 <tr>
                     <th>#</th>
@@ -89,7 +110,7 @@
                         <tr>
                             <td><?= $member['member_id'] ?></td>
                             <td><?= $member['last_name'] . ', ' . $member['first_name'] . ' ' . $member['middle_name']; ?></td>
-                            
+                            <td><?= $member['head_last_name'] . ', ' . $member['head_first_name'] ?></td> <!-- Household Head's Full Name -->
                             <td><?= $member['birthdate']; ?></td>
                             <td><?= htmlspecialchars($member['age']) ?></td>
                             <td><?= $member['civil_status']; ?></td>
@@ -104,12 +125,7 @@
                                     data-first-name="<?= htmlspecialchars($member['first_name']) ?>"
                                     data-last-name="<?= htmlspecialchars($member['last_name']) ?>"
                                     data-middle-name="<?= htmlspecialchars($member['middle_name']) ?>"                                   
-                                    data-birthdate="<?= $member['birthdate'] ?>"
-                                    data-age="<?= $member['age'] ?>"
                                     data-civil-status="<?= $member['civil_status'] ?>"
-                                    data-gender="<?= $member['gender'] ?>"
-                                    data-relationship="<?= htmlspecialchars($member['relationship_to_head']) ?>"
-                                    data-tribe="<?= $member['tribe'] ?>"
                                     data-occupation="<?= $member['occupation'] ?>">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -132,10 +148,10 @@
 
         <!-- Pagination -->
         <nav>
-            <ul class="pagination">
+            <ul class="pagination justify-content-center">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                     <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-                        <a class="page-link" href="?page=<?= $i ?>&search=<?= urlencode($search) ?>"><?= $i ?></a>
+                        <a class="page-link" href="household_members.php?page=<?= $i ?>&search=<?= htmlspecialchars($search) ?>"><?= $i ?></a>
                     </li>
                 <?php endfor; ?>
             </ul>
@@ -178,28 +194,6 @@
                             <input type="text" name="middle_name" id="middleName" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label for="relationship" class="form-label">Relationship to Head</label>
-                            <select class="form-control" name="relationship_to_head" id="relationship">
-                                <option>-select-</option>
-                                <option value="Father">Father</option>
-                                <option value="Mother">Mother</option>
-                                <option value="Husband">Husband</option>
-                                <option value="Wife">Wife</option>
-                                <option value="Daughter">Daughter</option>
-                                <option value="Son">Son</option>
-                                <option value="Sister">Sister</option>
-                                <option value="Brother">Brother</option>
-                                <option value="Grandmother">Grandmother</option>
-                                <option value="Grandfather">Grandfather</option>
-                                <option value="Uncle">Uncle</option>
-                                <option value="Auntie">Auntie</option>
-                                <option value="Counsin">Cousin</option>
-                                <option value="In-law">In-law</option>
-                                <option value="Friend">Friend</option>
-                                <option value="None">None</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
                             <label for="birthdate" class="form-label">Birthdate</label>
                             <input type="date" name="birthdate" id="birthdate" class="form-control" required onchange="calculateMemberAge()">
                         </div>
@@ -214,6 +208,7 @@
                                 <option value="Single">Single</option>
                                 <option value="Married">Married</option>
                                 <option value="Widowed">Widowed</option>
+                                <option value="Live In">Live In</option>
                                 <option value="Separated">Separated</option>
                             </select>
                         </div>
@@ -223,6 +218,28 @@
                                 <option>-select-</option>
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="relationship_to_head" class="form-label">Relationship to Head</label>
+                            <select name="rrelationship_to_head" id="relationship_to_head" class="form-control" required>
+                                <option>-select-</option>
+                                <option value="Father">Father</option>
+                                <option value="Mother">Mother</option>
+                                <option value="Husband">Husband</option>
+                                <option value="Wife">Wife</option>
+                                <option value="Daughter">Daughter</option>
+                                <option value="Son">Son</option>
+                                <option value="Sister">Sister</option>
+                                <option value="Brother">Brother</option>
+                                <option value="Grandmother">Grandmother</option>
+                                <option value="Grandfather">Grandfather</option>
+                                <option value="Uncle">Uncle</option>
+                                <option value="Auntie">Auntie</option>
+                                <option value="Counsin">Counsin</option>
+                                <option value="In-law">In-law</option>
+                                <option value="Friend">Friend</option>
+                                <option value="None">None</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -319,28 +336,157 @@
     
 
     <!-- Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="edit_member.php" method="POST">
+                    <input type="hidden" name="member_id" id="editMemberId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModalLabel">Edit Resident</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Same fields as in the Add Modal, but pre-populated -->
+                        <div class="mb-3">
+                            <label for="lastName" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" name="last_name" id="editLastName" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="firstName" class="form-label">First Name</label>
+                            <input type="text" class="form-control" name="first_name" id="editFirstName" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="middleName" class="form-label">Middle Name</label>
+                            <input type="text" class="form-control" name="middle_name" id="editMiddleName" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="civilStatus" class="form-label">Civil Status</label>
+                            <select class="form-control" name="civil_status" id="editcivil_status" autofocus>
+                                <option>-select-</option>
+                                <option value="Single">Single</option>
+                                <option value="Married">Married</option>
+                                <option value="Widowed">Widowed</option>
+                                <option value="Live In">Live In</option>
+                                <option value="Separated">Separated</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="occupation" class="form-label">Occupation</label>
+                            <select class="form-control" id="editOccupation" name="occupation" required autofocus>
+                                <option>-select-</option>
+                                <option value="None">None</option>
+                                <option value="Accountant">Accountant</option>
+                                <option value="Assistant">Assistant</option>
+                                <option value="Baker">Baker</option>
+                                <option value="Barber">Barber</option>
+                                <option value="Bookkeeper">Bookkeeper</option>
+                                <option value="Businessman/woman">Businessman/woman</option>
+                                <option value="Butcher">Butcher</option>
+                                <option value="Carpenter">Carpenter</option>
+                                <option value="Cahsier">Cashier</option>
+                                <option value="Construction Worker">Construction Worker</option>
+                                <option value="Civil Servant">Civil Servant</option>
+                                <option value="Chef">Chef</option>
+                                <option value="Doctor">Doctor</option>
+                                <option value="Dentist">Dentist</option>
+                                <option value="Driver">Driver</option>
+                                <option value="Electrician">Electrician</option>
+                                <option value="Farmer">Farmer</option>
+                                <option value="Firefighter">Firefighter</option>
+                                <option value="Fisherman">Fisherman</option>
+                                <option value="Housekeeper">Housekeeper</option>
+                                <option value="Housewife">Housewife</option>
+                                <option value="Lawyer">Lawyer</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Nurse">Nurse</option>
+                                <option value="Office Cleark">Office Clerk</option>
+                                <option value="Overseas Filipino Worker (OFW)">Overseas Filipino Worker (OFW)</option>
+                                <option value="Police Officer">Police Officer</option>
+                                <option value="Salesperson">Salesperson</option>
+                                <option value="Seaman/woman">Seaman/woman</option>
+                                <option value="Soldier">Soldier</option>
+                                <option value="Teacher">Teacher</option>
+                                <option value="Vendor">Vendor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     
 
     <!-- Archive Modal -->
+    <div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="archive_member.php" method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="archiveModalLabel">Archive Resident</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to archive this resident?
+                        <input type="hidden" id="archive-member-id" name="member_id">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Archive</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     
 
     <script>
+        //Edit
+        document.addEventListener('DOMContentLoaded', function () {
+            const editModal = document.getElementById('editModal');
+            editModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget; // Button that triggered the modal
+                const memberId = button.getAttribute('data-id'); // Get the member_id
+
+                // Populate the hidden input and other fields via AJAX or directly from the button's data attributes
+                document.getElementById('editMemberId').value = memberId;
+                document.getElementById('editLastName').value = button.getAttribute('data-last-name') || '';
+                document.getElementById('editFirstName').value = button.getAttribute('data-first-name') || '';
+                document.getElementById('editMiddleName').value = button.getAttribute('data-middle-name') || '';
+                document.getElementById('editcivil_status').value = button.getAttribute('data-civil-status') || '';
+                document.getElementById('editOccupation').value = button.getAttribute('data-occupation') || ''
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Archive Modal Event Listener
+            const archiveModal = document.getElementById('archiveModal');
+            archiveModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const memberId = button.getAttribute('data-id');
+                document.getElementById('archive-member-id').value = memberId;
+            });
+        });
+
         //Age Calculation
         function calculateMemberAge() {
-        const birthdate = document.getElementById('birthdate').value;
-        if (birthdate) {
-            const today = new Date();
-            const birthDate = new Date(birthdate);
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const monthDiff = today.getMonth() - birthDate.getMonth();
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                age--;
+            const birthdate = document.getElementById('birthdate').value;
+            if (birthdate) {
+                const today = new Date();
+                const birthDate = new Date(birthdate);
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                document.getElementById('age').value = age;
+            } else {
+                document.getElementById('age').value = '';
             }
-            document.getElementById('age').value = age;
-        } else {
-            document.getElementById('age').value = '';
         }
-    }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

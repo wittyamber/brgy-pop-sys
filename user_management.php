@@ -26,8 +26,9 @@
         <div class="header">
             <h1>User Management</h1>
             <a href="#" class="add-btn" onclick="event.preventDefault(); openModal();">
-                <i class="fas fa-plus"></i> Add User
-            </a>
+    <i class="fas fa-plus"></i> Add User
+</a>
+
         </div>
         <div class="search-container">
         <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">
@@ -83,9 +84,36 @@
             </table>
         </div>
     </table>
-</div>
+    <form method="POST" action="save_user.php">
+    <div>
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+    </div>
+    <div>
+        <label for="role">Role:</label>
+        <select id="role" name="role" required>
+            <option value="Admin">Admin</option>
+            <option value="Staff">Staff</option>
+        </select>
+    </div>
+    <div>
+        <label for="status">Status:</label>
+        <select id="status" name="status" required>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+        </select>
+    </div>
+    <div>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-success">Save User</button>
+    <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
+</form>
 
-    <!-- Add User Modal -->
+<!-- </div>
+
+    Add User Modal
     <div id="addUserModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
@@ -113,13 +141,13 @@
                     <label for="password">Password:</label>
                     <input type="password" id="password" name="password">
                 </div>
-                <!-- <button type="submit">Save User</button> -->
+                
                 <button type="button" class="btn btn-success">Save User</button>
                 <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
-                <!-- <button type="button" onclick="closeModal()">Cancel</button> -->
+
             </form>
         </div>
-    </div>
+    </div> -->
 
 
     <script>
@@ -155,6 +183,6 @@
             document.getElementById("addUserModal").style.display = "none";
         }
 
-    </script>
+    </script> -->
 </body>
 </html>

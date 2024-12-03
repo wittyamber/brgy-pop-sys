@@ -2,13 +2,20 @@
     // Include database connection
     include 'config.php';
 
-    // Fetch data from the database for dashboard display
-    $total_population = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM households"))['total'];
+    //Total Population
+    $total_population = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM households WHERE archived = '0'"))['total'];
+    $total_population = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM household_members WHERE archived = '0'"))['total'];
+
     $total_purok = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT address) AS total FROM households"))['total'];
+
     $most_populated_purok = mysqli_fetch_assoc(mysqli_query($conn, "SELECT address, COUNT(*) AS count FROM households GROUP BY address ORDER BY count DESC LIMIT 1"))['address'];
-    $senior_citizens = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM households WHERE age >= 60"))['total'];
+
+    $senior_citizens = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM households WHERE age >= 60 "))['total'];
+
     $total_males = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM households WHERE gender = 'Male'"))['total'];
+
     $total_females = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS total FROM households WHERE gender = 'Female'"))['total'];
+
 ?>
 
 <!DOCTYPE html>

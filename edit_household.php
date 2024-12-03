@@ -7,9 +7,11 @@
         $last_name = $_POST['last_name'];
         $first_name = $_POST['first_name'];
         $middle_name = $_POST['middle_name'];
+        $birthdate = $_POST['birthdate'];
         $gender = $_POST['gender'];
         $civil_status = $_POST['civil_status'];
         $tribe = $_POST['tribe'];
+        $occupation = $_POST['occupation'];
         $address = $_POST['address'];
         $contact_number = $_POST['contact_number'];
 
@@ -18,17 +20,20 @@
                     last_name = ?, 
                     first_name = ?, 
                     middle_name = ?, 
+                    birthdate = ?,
                     gender = ?, 
                     civil_status = ?, 
-                    tribe = ?, 
+                    tribe = ?,
+                    occupation =  ?, 
                     address = ?, 
                     contact_number = ? 
                 WHERE household_id = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssssssi", $last_name, $first_name, $middle_name, $gender, $civil_status, $tribe, $address, $contact_number, $household_id);
+        $stmt->bind_param("ssssssssssi", $last_name, $first_name, $middle_name, $birthdate, $gender, $civil_status, $occupation, $tribe ,$address, $contact_number, $household_id);
 
         if ($stmt->execute()) {
             // Set the success message after successful update
+            session_start();
             $_SESSION['success_message'] = "Household head updated successfully.";
             header("Location: household.php"); // Redirect to the main page
             exit;
