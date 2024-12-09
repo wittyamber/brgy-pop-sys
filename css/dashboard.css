@@ -2,56 +2,59 @@
 body {
     display: flex;
     background-color: #f5f5f5;
+    margin-left: 250px; /* Adjust this value to match the sidebar width */
+    padding: 20px;
 }
 
 .sidebar {
-    min-width: 250px;
-    max-width: 250px;
-    background-color: #454545;
-    color: rgb(255, 255, 255);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px; /* Adjust based on your design */
     height: 100vh;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
+    background-color: #343a40; /* Sidebar background color */
+    color: white;
+    padding-top: 20px;
+    z-index: 1000; /* Ensure it stays on top of other elements */
+    overflow-y: auto; /* Allow scrolling inside the sidebar */
 }
 
 .sidebar-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 10px;
-    margin-top: 10px;
+    text-align: center;
+    padding-bottom: 20px;
 }
 
 .sidebar-logo {
-    max-width: 90px;
-    margin-right: 10px;
-    display: block;
-}
-
-.sidebar-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin-top: 10px;
+    max-width: 60%;
+    height: auto;
 }
 
 .sidebar-nav {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    list-style: none;
+    padding-left: 0;
 }
 
 .sidebar-link {
-    color: rgb(0, 0, 0);
-    padding: 10px;
-    display: flex;
-    align-items: center;
+    display: block;
+    padding: 10px 20px;
+    color: white;
     text-decoration: none;
-    transition: background-color 0.3s ease;
+    font-size: 16px;
 }
 
 .sidebar-link:hover {
-    background-color: #bdbec0;
+    background-color: #007bff; /* Highlight on hover */
+}
+
+.sidebar-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 20px;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #ccc;
 }
 
 .sidebar-link i {
@@ -118,10 +121,18 @@ body {
     font-weight: 700;
 }
 
-/* .gradient-icon {
-    background: radial-gradient(circle, rgb(161, 249, 147) 20%, rgb(77, 249, 39) 98%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+.summary-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem; /* Adds space between cards */
+    justify-content: space-between;
 }
- */
+
+.summary-card {
+    flex: 1 1 calc(20% - 1rem); /* Adjusts card width */
+    min-width: 150px; /* Minimum size for smaller screens */
+}
+
+.chart-container {
+    margin-top: 2rem;
+}

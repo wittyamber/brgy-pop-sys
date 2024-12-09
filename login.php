@@ -17,9 +17,28 @@
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
+
+            // Redirect based on role
+        switch ($user['role']) {
+            case 'Admin':
+                header("Location: dashboard.php");
+                break;
+            case 'Captain':
+                header("Location: captain/captain_ui.php");
+                break;
+            case 'Secretary':
+                header("Location: secretary/secretary_ui.php");
+                break;
+            case 'Staff':
+                header("Location: staff_ui.php");
+                break;
+            case 'BHW':
+                header("Location: bhw_ui.php");
+                break;
+        }
             
             // Redirect based on role
-            header("Location: dashboard.php");
+            //header("Location: dashboard.php");
             exit;
         } else {
             header("Location: index.php?error=Invalid username or password");

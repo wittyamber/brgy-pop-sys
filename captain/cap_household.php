@@ -1,7 +1,7 @@
 <?php
-    require 'config.php';
-    include 'side_nav.php';
-    include 'includes/alerts.php';
+    require '../config.php';
+    include 'side_navigation.php';
+    include '../includes/alerts.php';
 
     // Start session if not started already
     if (session_status() === PHP_SESSION_NONE) {
@@ -88,7 +88,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IBPMMS | Household </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/household.css">
+    <link rel="stylesheet" href="../css/household.css">
 </head>
 <body>
     <div class="container mt-5">
@@ -203,7 +203,7 @@
     <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="add_household.php" method="POST">
+                <form action="cap_add_household.php" method="POST">
                     <div class="modal-header">
                         <h5 class="modal-title" id="addModalLabel">Add Household Head</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -401,12 +401,11 @@
         </div>
     </div>
 
-
     <!-- Edit Modal -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="edit_household.php" method="POST">
+                <form action="cap_edit_household.php" method="POST">
                     <input type="hidden" name="household_id" id="editHouseholdId">
                     <div class="modal-header">
                         <h5 class="modal-title" id="editModalLabel">Edit Household Head</h5>
@@ -578,7 +577,7 @@
     <div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="archive_household.php" method="POST">
+                <form action="cap_archive_household.php" method="POST">
                     <div class="modal-header">
                         <h5 class="modal-title" id="archiveModalLabel">Archive Household</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

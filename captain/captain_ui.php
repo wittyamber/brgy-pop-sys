@@ -1,6 +1,12 @@
 <?php
-    include 'side_nav.php';
-    include 'config.php';
+    include ('../config.php');
+    include 'side_navigation.php';
+
+    session_start();
+    if ($_SESSION['role'] !== 'Captain') {
+        header("Location: ../index.php");
+        exit();
+    }
 
     // Fetch totals
     $total_population = $conn->query(" 
@@ -76,23 +82,17 @@
 
     // Calculate total pages
     $total_pages = ceil($total_records / $limit);
-
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IBPMMS | Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="css/dashboard.css">
+    <title>Captain Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
 </head>
-    <body>
-        <div class="container">
-        <h2 class="mb-4">Dashboard - Admin</h2>
-        
+<body>
+    <div class="container mt-5">
         <!-- Summary Section -->
         <div class="row">
             <div class="summary-section">
@@ -156,7 +156,7 @@
         <!-- Barangay Officials Section -->
         <div class="mt-5">
             <h3 class="text-center">Barangay Officials</h3>
-            <button class="btn btn-primary mb-3" onclick="window.location.href='barangay_officials.php';">Manage Barangay Officials</button>
+            <!-- <button class="btn btn-primary mb-3" onclick="window.location.href='barangay_officials.php';">Manage Barangay Officials</button> -->
             <table class="table table-striped">
                 <thead>
                     <tr>
@@ -247,7 +247,7 @@
                         const page = this.getAttribute('data-page'); // Get the page number
 
                         // Fetch data for the selected page
-                        fetch(`dashboard.php?page=${page}`)
+                        fetch(`captain_ui.php?page=${page}`)
                             .then(response => response.text())
                             .then(html => {
                                 // Replace the content of the container
@@ -268,7 +268,7 @@
                 });
 
                 function fetchData(page) {
-                    fetch(`dashboard.php?page=${page}`)
+                    fetch(`captain_ui.php?page=${page}`)
                         .then(response => response.text())
                         .then(html => {
                             officialsContainer.innerHTML = html;
@@ -278,6 +278,6 @@
             });
 
         </script>
-        
-    </body>
+    </div>
+</body>
 </html>

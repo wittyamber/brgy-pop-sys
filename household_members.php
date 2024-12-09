@@ -92,7 +92,7 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Name</th>
+                    <th>Full Name</th>
                     <th>Household Head</th>
                     <th>Birthdate</th>
                     <th>Age</th>
@@ -106,9 +106,9 @@
             </thead>
             <tbody>
                 <?php if (!empty($members)): ?>
-                    <?php foreach ($members as $member): ?>
+                    <?php foreach ($members as $index => $member): ?>
                         <tr>
-                            <td><?= $member['member_id'] ?></td>
+                            <td><?= ($start + $index + 1); ?></td>
                             <td><?= $member['last_name'] . ', ' . $member['first_name'] . ' ' . $member['middle_name']; ?></td>
                             <td><?= $member['head_last_name'] . ', ' . $member['head_first_name'] ?></td> <!-- Household Head's Full Name -->
                             <td><?= $member['birthdate']; ?></td>
@@ -119,6 +119,7 @@
                             <td><?= $member['tribe']; ?></td>
                             <td><?= $member['occupation']; ?></td>
                             <td>
+
                                 <!-- Edit Button -->
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal"
                                     data-id="<?= $member['member_id'] ?>"

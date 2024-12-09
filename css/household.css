@@ -1,3 +1,8 @@
+body {
+    margin-left: 250px; /* Adjust this value to match the sidebar width */
+    padding: 20px;
+}
+
 .search-form .input-group {
     border-radius: 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
