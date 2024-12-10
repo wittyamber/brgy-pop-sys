@@ -26,18 +26,14 @@
     <link rel="stylesheet" href="css/reports.css">
 </head>
 <body>
-    <div class="container mt-4">
-        <h1 class="text-center">Barangay Population Report</h1>
+    <div class="container my-5">
+        <h1 class="text-center">Population Growth Report</h1>
+
+        <!-- Filters -->
         <div class="row my-3">
-            <div class="col-md-3">
-                <select id="year" class="form-select">
-                    <option value="2024">2024</option>
-                    <option value="2023">2023</option>
-                </select>
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
+                <label for="month" class="form-label">Select Month</label>
                 <select id="month" class="form-select">
-                    <option value="">All Months</option>
                     <option value="1">January</option>
                     <option value="2">February</option>
                     <option value="3">March</option>
@@ -52,111 +48,89 @@
                     <option value="12">December</option>
                 </select>
             </div>
+            <div class="col-md-6">
+                <label for="year" class="form-label">Select Year</label>
+                <select id="year" class="form-select">
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                </select>
+            </div>
         </div>
 
-        <canvas id="lineChart"></canvas>
-        <div id="reportTable" class="mt-5"></div>
+        <!-- Line Graph -->
+        <canvas id="populationGraph" height="100"></canvas>
 
-        <button onclick="window.print()" class="btn btn-success">Print Report</button>
+        <!-- Data Table -->
+        <h3 class="mt-5">Detailed Data</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Age Distribution</th>
+                    <th>Males</th>
+                    <th>Females</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody">
+                <!-- Dynamically populated rows -->
+            </tbody>
+        </table>
+
+        <!-- Print Button -->
+        <button id="printButton" class="btn btn-primary">Print Report</button>
     </div>
 
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Add change event listeners to year and month dropdowns
-            const yearSelect = document.getElementById('year');
-            const monthSelect = document.getElementById('month');
+        document.getElementById("month").addEventListener("change", generateReport);
+            document.getElementById("year").addEventListener("change", generateReport);
 
-            yearSelect.addEventListener('change', generateReport);
-            monthSelect.addEventListener('change', generateReport);
-        });
-
-        function generateReport() {
-            const year = document.getElementById('year').value;
-            const month = document.getElementById('month').value;
-
-            // Debug values of year and month
-            console.log('Fetching report for Year:', year, 'Month:', month);
-
-            fetch(`backend_report.php?year=${year}&month=${month}`)
-                .then(response => {
-                    console.log('Response Status:', response.status); // Debug HTTP status
-                    if (!response.ok) {
-                        throw new Error(`HTTP Error: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Data received:', data); // Debug response data
-                    if (data.success) {
-                        updateChart(data.data); // Update the chart
-                        updateTable(data.data); // Update the table
-                    } else {
-                        alert('Failed to generate report');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error); // Debug any errors
-                    alert('An error occurred while generating the report. Please try again.');
-                });
-        }
-
-        const ctx = document.getElementById('lineChart').getContext('2d');
-        let lineChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [], // Dynamic labels
-                datasets: [
-                    {
-                        label: 'Population Growth',
-                        data: [], // Dynamic data
-                        borderColor: 'blue',
-                        fill: false,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Population Growth Trend'
-                    }
+            const ctx = document.getElementById("populationGraph").getContext("2d");
+            let chart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: "Population Growth",
+                        data: [],
+                        borderColor: "blue",
+                        fill: false
+                    }]
                 }
-            }
-        });
-
-        function updateChart(data) {
-            lineChart.data.labels = data.labels; // Assuming data.labels is an array of labels
-            lineChart.data.datasets[0].data = data.populationGrowth; // Assuming data.populationGrowth is an array
-            lineChart.update();
-        }
-
-        function updateTable(data) {
-            let html = `
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Address</th>
-                            <th>Age Group</th>
-                            <th>Males</th>
-                            <th>Females</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            data.forEach(row => {
-                html += `
-                    <tr>
-                        <td>${row.address}</td>
-                        <td>${row.age_group}</td>
-                        <td>${row.total_males}</td>
-                        <td>${row.total_females}</td>
-                        <td>${row.total_population}</td>
-                    </tr>`;
             });
-            html += '</tbody></table>';
-            document.getElementById('reportTable').innerHTML = html;
-        }
+
+            function generateReport() {
+                const month = document.getElementById("month").value;
+                const year = document.getElementById("year").value;
+
+                fetch(`backend_report.php?month=${month}&year=${year}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update Graph
+                        chart.data.labels = data.graph.labels;
+                        chart.data.datasets[0].data = data.graph.values;
+                        chart.update();
+
+                        // Update Table
+                        const tbody = document.getElementById("reportTableBody");
+                        tbody.innerHTML = "";
+                        data.table.forEach(row => {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${row.ageBracket}</td>
+                                    <td>${row.males}</td>
+                                    <td>${row.females}</td>
+                                    <td>${row.total}</td>
+                                </tr>
+                            `;
+                        });
+                    });
+            }
+
+            // Print functionality
+            document.getElementById("printButton").addEventListener("click", () => {
+                window.print();
+            });
     </script>
 </body>
 </html>

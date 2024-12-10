@@ -106,9 +106,10 @@
                             <button class="btn btn-info btn-sm view-btn" data-id="<?= $barangay_official['official_id'] ?>"><i class="fas fa-eye"></i></button>
                             <button class="btn btn-warning btn-sm edit-btn" data-id="<?= $barangay_official['official_id'] ?>" data-bs-toggle="modal" data-bs-target="#editModal"
                             ><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-danger btn-sm toggle-status-btn" 
-                                    data-id="<?= $barangay_official['official_id'] ?>" 
-                                    data-status="<?= $barangay_official['status'] ?? 'Active' ?>">
+                            <button 
+                                class="btn btn-sm toggle-status-btn <?= ($barangay_official['status'] === 'Inactive') ? 'btn-success' : 'btn-danger' ?>" 
+                                data-id="<?= $barangay_official['official_id'] ?>" 
+                                data-status="<?= $barangay_official['status'] ?? 'Active' ?>">
                                 <?= ($barangay_official['status'] === 'Inactive') ? 'Activate' : 'Deactivate' ?>
                             </button>
                         </td>

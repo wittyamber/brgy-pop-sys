@@ -61,9 +61,10 @@
                     <td>
                         <button class="btn btn-info btn-sm view-btn" data-id="<?= $user['id'] ?>"><i class="fas fa-eye"></i></button>
                         <button class="btn btn-warning btn-sm edit-btn" data-id="<?= $user['id'] ?>"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-danger btn-sm toggle-status-btn" 
-                                data-id="<?= $user['id'] ?>" 
-                                data-status="<?= $user['status'] ?? 'Active' ?>">
+                        <button 
+                            class="btn btn-sm toggle-status-btn <?= ($user['status'] === 'Inactive') ? 'btn-success' : 'btn-danger' ?>" 
+                            data-id="<?= $user['id'] ?>" 
+                            data-status="<?= $user['status'] ?? 'Active' ?>">
                             <?= ($user['status'] === 'Inactive') ? 'Activate' : 'Deactivate' ?>
                         </button>
                     </td>
