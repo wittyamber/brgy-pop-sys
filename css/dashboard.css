@@ -2,21 +2,22 @@
 body {
     display: flex;
     background-color: #f5f5f5;
-    margin-left: 250px; /* Adjust this value to match the sidebar width */
+    margin-left: 250px; 
     padding: 20px;
+    font-family: Arial, sans-serif;
 }
 
 .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    width: 250px; /* Adjust based on your design */
+    width: 250px;
     height: 100vh;
-    background-color: #343a40; /* Sidebar background color */
+    background-color: #343a40; 
     color: white;
     padding-top: 20px;
-    z-index: 1000; /* Ensure it stays on top of other elements */
-    overflow-y: auto; /* Allow scrolling inside the sidebar */
+    z-index: 1000; 
+    overflow-y: auto; 
 }
 
 .sidebar-header {
@@ -135,4 +136,59 @@ hr {
 
 .chart-container {
     margin-top: 2rem;
+}
+
+.toggle-sidebar {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    display: none;
+}
+
+.dropdown-toggle::after {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.dropdown-menu {
+    background-color: #5b5b5b;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+}
+
+.dropdown-item i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 0;
+        box-shadow: none;
+    }
+
+    .sidebar.show {
+        width: 250px;
+    }
+
+    .toggle-sidebar {
+        display: block;
+    }
+
+    .sidebar-link span, .sidebar-title {
+        opacity: 1;
+        width: auto;
+    }
 }

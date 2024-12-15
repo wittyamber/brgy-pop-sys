@@ -22,3 +22,29 @@ body {
 .btn.ms-2 {
     margin-right: 2rem; /* Add this line to add space between the search bar and the button */
 }
+
+@media print {
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        word-wrap: break-word;
+        white-space: normal;
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    @page {
+        size: auto; /* Automatically adjusts to content size */
+        margin: 20mm; /* Set margins */
+    }
+}
+

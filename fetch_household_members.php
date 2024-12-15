@@ -1,35 +1,22 @@
 <?php
-include 'config.php'; // Include your database connection
+include 'config.php';
 
-if (isset($_GET['household_d'])) {
-    $household_head_id = intval($_GET['household_id']);
-
-    $query = "SELECT last_name, first_name, middle_name, birthdate, gender, relationship_to_head, occupation 
+if (isset($_POST['household_id'])) {
+    $household_id = $_POST['household_id'];
+    $query = "SELECT CONCAT(first_name, ' ', last_name) AS name, relationship_to_head 
               FROM household_members 
-              WHERE household_id = $household_id";
+              WHERE household_id = $household_id AND archived = 0";
+    $result = $conn->query($query);
 
-    $result = mysqli_query($conn, $query);
-
-    if ($result && mysqli_num_rows($result) > 0) {
-        $members = [];
-        while ($row = mysqli_fetch_assoc($result)) {
-            $members[] = $row;
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            echo "<tr>
+                    <td>{$row['name']}</td>
+                    <td>{$row['relationship_to_head']}</td>
+                </tr>";
         }
-
-        echo json_encode([
-            'status' => 200,
-            'members' => $members,
-        ]);
     } else {
-        echo json_encode([
-            'status' => 404,
-            'message' => 'No household members found.',
-        ]);
+        echo "<tr><td colspan='3' class='text-center'>No active members found.</td></tr>";
     }
-} else {
-    echo json_encode([
-        'status' => 400,
-        'message' => 'Invalid request. Household head ID is required.',
-    ]);
 }
 ?>

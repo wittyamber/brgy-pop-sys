@@ -2,22 +2,17 @@
     include 'config.php';
     include 'side_nav.php'; 
 
-     // Initialize the $barangay_officials variable
     $barangay_officials = [];
 
-     // Fetch data from the barangay_officials table
      $query = "SELECT * FROM barangay_officials";
-    $result = mysqli_query($conn, $query);
+        $result = mysqli_query($conn, $query);
 
-     // Check if query was successful
     if ($result) {
-         // Fetch data into an associative array
         $barangay_officials = mysqli_fetch_all($result, MYSQLI_ASSOC);
     } else {
         echo "Error fetching officials: " . mysqli_error($conn);
     }
 
-    // Define the number of results per page
     $results_per_page = 10;
 
     $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -158,10 +153,6 @@
                 </div>
                 <div class="modal-body">
                     <form id="addOfficialForm" method="POST" action="add_officials.php">
-                    <div class="mb-3">
-                        <label for="officialId" class="form-label">ID Number</label>
-                        <input type="text" class="form-control" id="officialId" name="officialId" required>
-                    </div>
                     <div class="mb-3">
                         <label for="officialName" class="form-label">Name</label>
                         <input type="text" class="form-control" id="officialName" name="officialName" required>
@@ -306,8 +297,8 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="contact-number" class="form-label">Contact Number</label>
-                                <input type="text" class="form-control" id="contact-number" name="contact_number" required autofocus>
+                                <label for="contact_number" class="form-label">Contact Number</label>
+                                <input type="text" class="form-control" id="contact_number" name="contact_number" required autofocus>
                             </div>
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
@@ -424,37 +415,42 @@
                 });
             });
 
-            // Edit official details
             document.querySelectorAll(".edit-btn").forEach(button => {
                 button.addEventListener("click", function () {
                     const officialId = this.dataset.id;
 
                     fetch(`get_official.php?id=${officialId}`)
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error("Failed to fetch official data");
+                            }
+                            return response.json();
+                        })
                         .then(data => {
-                            document.getElementById("editOfficialId").value = data.official_id;
-                            document.getElementById("editName").value = data.name;
-                            document.getElementById("editPosition").value = data.position;
-                            document.getElementById("editAddress").value = data.address;
-                            document.getElementById("editContact").value = data.contact_number;
-                            document.getElementById("editEmail").value = data.email;
+                            if (data.error) {
+                                alert(data.error);
+                                return;
+                            }
+
+                            document.getElementById("official_id").value = data.official_id;
+                            document.getElementById("name").value = data.name;
+                            document.getElementById("position").value = data.position;
+                            document.getElementById("address").value = data.address;
+                            document.getElementById("contact_number").value = data.contact_number;
+                            document.getElementById("email").value = data.email;
+                            document.getElementById("date_assigned").value = data.date_assigned;
 
                             // Show modal
-                            const modal = new bootstrap.Modal(document.getElementById("editOfficialModal"));
+                            const modal = new bootstrap.Modal(document.getElementById("editModal"));
                             modal.show();
+                        })
+                        .catch(error => {
+                            console.error("Error fetching data:", error);
+                            alert("An error occurred while fetching official details.");
                         });
                 });
             });
 
-            function openEditModal(official) {
-                document.getElementById('official_id').value = official.official_id;
-                document.getElementById('name').value = official.name;
-                document.getElementById('position').value = official.position;
-                document.getElementById('address').value = official.address;
-                document.getElementById('contact_number').value = official.contact_number;
-                document.getElementById('email').value = official.email;
-                document.getElementById('date_assigned').value = official.date_assigned;
-            }
 
             // Activate/Deactivate official
             document.querySelectorAll(".toggle-status-btn").forEach(button => {
