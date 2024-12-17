@@ -1,27 +1,23 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
 body {
     font-family: Arial, sans-serif;
-    line-height: 1.6;
-    background-color: #f4f6f9;
-    margin-left: 250px; /* Adjust this value to match the sidebar width */
     padding: 20px;
+    margin-left: 18%;
 }
-
+.container {
+    margin-top: 20px;
+}
+.chart-container {
+    position: relative;
+    margin: auto;
+    height: 400px;
+    width: 80%;
+}
 @media print {
-    body * {
-        visibility: hidden;
+    body {
+        margin: 0;
+        padding: 0;
     }
-    .container, .container * {
-        visibility: visible;
-    }
-    .container {
-        position: absolute;
-        top: 0;
-        left: 0;
+    .no-print {
+        display: none;
     }
 }

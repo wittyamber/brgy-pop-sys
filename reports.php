@@ -1,7 +1,8 @@
 <?php
-    include 'config.php'; 
+    require 'config.php';
     include 'side_nav.php';
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,128 +10,116 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IBPMMS | Report</title>
 
-    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+
     <link rel="stylesheet" href="css/reports.css">
 </head>
 <body>
-    <div class="container my-5">
-        <h1 class="text-center">Population Growth Report</h1>
+    <div class="container mt-4">
+        <h2 class="text-center">Generate Reports</h2>
+        <form id="reportForm">
+            <div class="form-group">
+                <label for="reportType">Select Report Type:</label>
+                <select id="reportType" class="form-control">
+                    <option value="quarterly">Quarterly Population</option>
+                    <option value="semi-annual">Semi-Annual Population</option>
+                    <option value="annual">Annual Population</option>
+                </select>
+            </div>
+        </form>
 
-        <!-- Filters -->
-        <div class="row my-3">
-            <div class="col-md-6">
-                <label for="month" class="form-label">Select Month</label>
-                <select id="month" class="form-select">
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label for="year" class="form-label">Select Year</label>
-                <select id="year" class="form-select">
-                    <option value="2024">2024</option>
-                    <option value="2023">2023</option>
-                </select>
-            </div>
+        <!-- Population Chart -->
+        <div id="chartContainer" class="mt-4">
+            <canvas id="populationChart"></canvas>
         </div>
 
-        <!-- Line Graph -->
-        <canvas id="populationGraph" height="100"></canvas>
+        <!-- Age Distribution Chart -->
+        <div id="ageDistributionContainer" class="mt-4">
+            <h4 class="text-center">Age Distribution by Gender</h4>
+            <canvas id="ageDistributionChart"></canvas>
+        </div>
 
-        <!-- Data Table -->
-        <h3 class="mt-5">Detailed Data</h3>
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Age Distribution</th>
-                    <th>Males</th>
-                    <th>Females</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody id="reportTableBody">
-                <!-- Dynamically populated rows -->
-            </tbody>
-        </table>
+        <!-- Purok Population Distribution Chart -->
+        <div id="purokPopulationContainer" class="mt-4">
+            <h4 class="text-center">Population Distribution per Purok</h4>
+            <canvas id="purokPopulationChart"></canvas>
+        </div>
 
-        <!-- Print Button -->
-        <button id="printButton" class="btn btn-primary">Print Report</button>
+        <!-- Purok Household Distribution Chart -->
+        <div id="purokHouseholdContainer" class="mt-4">
+            <h4 class="text-center">Household Distribution per Purok</h4>
+            <canvas id="purokHouseholdChart"></canvas>
+        </div>
+
+        <div id="printSection" class="mt-3">
+            <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+        </div>
     </div>
 
+    
 
     <script>
-        document.getElementById("month").addEventListener("change", generateReport);
-            document.getElementById("year").addEventListener("change", generateReport);
+        document.addEventListener('DOMContentLoaded', function () {
+            const reportTypeSelect = document.getElementById('reportType');
+            const populationChartCanvas = document.getElementById('populationChart').getContext('2d');
+            const ageDistributionCanvas = document.getElementById('ageDistributionChart').getContext('2d');
+            const purokPopulationCanvas = document.getElementById('purokPopulationChart').getContext('2d');
+            const purokHouseholdCanvas = document.getElementById('purokHouseholdChart').getContext('2d');
 
-            const ctx = document.getElementById("populationGraph").getContext("2d");
-            let chart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "Population Growth",
-                        data: [],
-                        borderColor: "blue",
-                        fill: false
-                    }]
-                }
-            });
+            let populationChart, ageChart, purokPopChart, purokHouseChart;
 
-            function generateReport() {
-                const month = document.getElementById("month").value;
-                const year = document.getElementById("year").value;
-
-                fetch(`backend_report.php?month=${month}&year=${year}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Update Graph
-                        chart.data.labels = data.graph.labels;
-                        chart.data.datasets[0].data = data.graph.values;
-                        chart.update();
-
-                        // Update Table
-                        const tbody = document.getElementById("reportTableBody");
-                        tbody.innerHTML = "";
-                        data.table.forEach(row => {
-                            tbody.innerHTML += `
-                                <tr>
-                                    <td>${row.ageBracket}</td>
-                                    <td>${row.males}</td>
-                                    <td>${row.females}</td>
-                                    <td>${row.total}</td>
-                                </tr>
-                            `;
-                        });
-                    });
+            function generateChart(canvas, data, label, type = 'bar') {
+                return new Chart(canvas, {
+                    type: type,
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: label,
+                            data: data.values,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: label
+                            }
+                        }
+                    }
+                });
             }
 
-            // Print functionality
-            document.getElementById("printButton").addEventListener("click", () => {
-                window.print();
+            async function fetchData(reportType, endpoint, chartInstance, canvas, label) {
+                const response = await fetch(`generate_report.php?type=${endpoint}`);
+                const data = await response.json();
+                if (chartInstance) chartInstance.destroy();
+                chartInstance = generateChart(canvas, data, label);
+                return chartInstance;
+            }
+
+            async function loadAllCharts(reportType) {
+                populationChart = await fetchData(reportType, 'population', populationChart, populationChartCanvas, `${reportType} Population Report`);
+                ageChart = await fetchData('age-distribution', 'age-distribution', ageChart, ageDistributionCanvas, 'Age Distribution by Gender');
+                purokPopChart = await fetchData('purok-population', 'purok-population', purokPopChart, purokPopulationCanvas, 'Population per Purok');
+                purokHouseChart = await fetchData('purok-households', 'purok-households', purokHouseChart, purokHouseholdCanvas, 'Households per Purok');
+            }
+
+            reportTypeSelect.addEventListener('change', function () {
+                const selectedType = reportTypeSelect.value;
+                loadAllCharts(selectedType);
             });
+
+            // Load default charts on page load
+            loadAllCharts(reportTypeSelect.value);
+        });
     </script>
 </body>
 </html>

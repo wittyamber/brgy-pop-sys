@@ -2,7 +2,23 @@
     include 'side_nav.php';
     include 'config.php';
 
-    // Fetch totals
+    $limit = 10; 
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; 
+    $offset = ($page - 1) * $limit; 
+
+    $count_query = "SELECT COUNT(*) AS total FROM barangay_officials WHERE status = 'Active'";
+    $count_result = mysqli_query($conn, $count_query);
+    $total_records = mysqli_fetch_assoc($count_result)['total'];
+
+    $total_pages = ceil($total_records / $limit);
+
+    $query = "SELECT name, position, date_assigned 
+    FROM barangay_officials 
+    WHERE status = 'Active' 
+    LIMIT $limit OFFSET $offset";
+    $barangay_officials = mysqli_query($conn, $query);
+
+
     $total_population = $conn->query(" 
         SELECT COUNT(DISTINCT hm.member_id) AS total
         FROM household_members hm
@@ -23,7 +39,6 @@
     $total_females = $conn->query("SELECT COUNT(*) AS total FROM household_members WHERE archived = 0 AND gender = 'Female'")->fetch_assoc()['total'];
     $total_teens = $conn->query("SELECT COUNT(*) AS total FROM household_members WHERE archived = 0 AND TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 13 AND 19")->fetch_assoc()['total'];
 
-    // Fetch most populated purok
     $pie_data_query = "
         SELECT p.purok_name AS purok, COUNT(hm.member_id) AS count
         FROM household_members hm
@@ -33,7 +48,7 @@
     $result = mysqli_query($conn, $pie_data_query);
 
     $pie_data = [];
-    $most_populated_purok = null; // Initialize variable for most populated purok
+    $most_populated_purok = null; 
 
     if ($result) {
         while ($row = mysqli_fetch_assoc($result)) {
@@ -48,25 +63,36 @@
         }
     }
 
-    // Convert to JSON for JavaScript
     $pie_data_json = json_encode($pie_data);
 
-    // Fetch barangay officials
-    $barangay_officials = $conn->query("SELECT name, position, date_assigned FROM barangay_officials");
+    $household_purok_query = "
+        SELECT p.purok_name AS purok, COUNT(h.household_id) AS count
+        FROM household h
+        INNER JOIN puroks p ON h.purok_id = p.purok_id
+        WHERE h.archived = 0
+        GROUP BY p.purok_name
+    ";
+    $household_purok_result = mysqli_query($conn, $household_purok_query);
 
-    // Pagination settings
-    $limit = 5; 
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $offset = ($page - 1) * $limit;
+    $household_purok_data = [];
+    if ($household_purok_result) {
+        while ($row = mysqli_fetch_assoc($household_purok_result)) {
+            $household_purok_data[] = [
+                'purok' => $row['purok'],
+                'count' => $row['count']
+            ];
+        }
+    }
 
-    $total_query = "SELECT COUNT(*) AS total FROM barangay_officials";
-    $total_result = mysqli_query($conn, $total_query);
-    $total_row = mysqli_fetch_assoc($total_result);
-    $total_records = $total_row['total'];
+    $household_purok_data_json = json_encode($household_purok_data);
 
-    $query = "SELECT name, position, date_assigned FROM barangay_officials LIMIT $limit OFFSET $offset";
-    $result = mysqli_query($conn, $query);
-    $total_pages = ceil($total_records / $limit);
+    $barangay_officials_query = "SELECT name, position, date_assigned FROM barangay_officials WHERE status = 'Active'";
+    $barangay_officials = mysqli_query($conn, $barangay_officials_query);
+
+    if (!$barangay_officials) {
+        die("Query failed: " . mysqli_error($conn));
+    }
+
 ?>
 
 <!DOCTYPE html>
@@ -75,8 +101,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IBPMMS | Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
@@ -141,9 +168,14 @@
             </div>
         </div>
 
-        <!-- Pie Chart -->
+        <!-- Residents Pie Chart -->
         <div class="chart-container mb-4" style="max-width: 600px; margin: auto;">
             <canvas id="purokChart"></canvas>
+        </div>
+
+        <!-- Households Per Purok -->
+        <div class="chart-container mb-4" style="max-width: 600px; margin: auto;">
+            <canvas id="householdChart"></canvas>
         </div>
 
         <!-- Barangay Officials Section -->
@@ -170,26 +202,15 @@
                     </tbody>
                 </table>
             </div>
-            <!-- Pagination Links -->
+
+            <!-- Pagination -->
             <nav>
                 <ul class="pagination justify-content-center">
-                    <?php if ($page > 1): ?>
-                    <li class="page-item">
-                        <a class="page-link" href="dashboard.php?page=<?= $page - 1; ?>">Previous</a>
-                    </li>
-                    <?php endif; ?>
-
-                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?= $i == $page ? 'active' : ''; ?>">
-                        <a class="page-link" href="dashboard.php?page=<?= $i; ?>"><?= $i; ?></a>
-                    </li>
+                    <?php for ($i = 1; $i <= $total_pages; $i++) : ?>
+                        <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                            <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                        </li>
                     <?php endfor; ?>
-
-                    <?php if ($page < $total_pages): ?>
-                    <li class="page-item">
-                        <a class="page-link" href="dashboard.php?page=<?= $page + 1; ?>">Next</a>
-                    </li>
-                    <?php endif; ?>
                 </ul>
             </nav>
         </div>
@@ -197,39 +218,100 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const pieData = <?= $pie_data_json; ?>;
-        const labels = pieData.map(data => data.purok);
-        const counts = pieData.map(data => data.count);
+        const colors = [
+            '#007bff',  // Bootstrap primary blue
+            '#28a745',  // Bootstrap green
+            '#dc3545',  // Bootstrap red
+            '#ffc107',  // Bootstrap yellow
+            '#17a2b8',  // Bootstrap info
+            '#6c757d'   // Bootstrap secondary gray
+        ];
 
-        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#7CEA9C', '#5B4E77', '#FF008C'];
-        const dynamicColors = labels.map((label, index) => colors[index % colors.length]);
-
-        const ctx = document.getElementById('purokChart').getContext('2d');
+    function createBootstrapChart(elementId, data, title, xAxisLabel, yAxisLabel) {
+        const ctx = document.getElementById(elementId).getContext('2d');
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: data.map(item => item.purok),
                 datasets: [{
-                    label: 'Population Count by Purok',
-                    data: counts,
-                    backgroundColor: dynamicColors,
-                    borderColor: dynamicColors.map(color => color),
+                    label: title,
+                    data: data.map(item => item.count),
+                    backgroundColor: data.map((_, index) => colors[index % colors.length]),
+                    borderColor: data.map((_, index) => colors[index % colors.length]),
                     borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: title,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
                 scales: {
                     x: {
-                        title: { display: true, text: 'Purok' }
+                        title: { 
+                            display: true, 
+                            text: xAxisLabel,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
                     },
                     y: {
                         beginAtZero: true,
-                        title: { display: true, text: 'Population Count' }
+                        title: { 
+                            display: true, 
+                            text: yAxisLabel,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
                     }
                 }
             }
         });
+    }
+
+    // Population Chart
+    const pieData = <?= $pie_data_json; ?>;
+    createBootstrapChart(
+        'purokChart', 
+        pieData, 
+        'Population Count by Purok', 
+        'Purok', 
+        'Population Count'
+    );
+
+    // Household Chart
+    const householdPurokData = <?= $household_purok_data_json; ?>;
+    createBootstrapChart(
+        'householdChart', 
+        householdPurokData, 
+        'Household Count by Purok', 
+        'Purok', 
+        'Household Count'
+    );
     </script>
 </body>
 </html>

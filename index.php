@@ -48,20 +48,35 @@
             <div class="row">
                 <div class="col-md-6">
                     <h4>Our Mission</h4>
-                    <p>To provide an efficient, transparent, and user-friendly system for managing barangay population data, enabling better community services and decision-making.</p>
+                    <p>To provide a cutting-edge, user-focused system designed to manage population data in an efficient and precise manner. By giving barangay officials reliable tools, we aim to enhance the delivery of services, improve transparency, and support data-driven decision-making for the betterment of the community.</p>
                 </div>
                 <div class="col-md-6">
-                    <h4>Key Features</h4>
-                    <ul>
-                        <li>Comprehensive Population Tracking</li>
-                        <li>Easy Data Management</li>
-                        <li>Secure User Authentication</li>
-                        <li>Reporting and Analytics</li>
-                    </ul>
-                </div>
+                <h4>Key Features</h4>
+                <ul>
+                    <li>Easy Data Management</li>
+                    <li>Purok-Based Monitoring</li>
+                    <li>Reporting and Analytics</li>
+                </ul>
+            </div>
+        </div>
+
+        <hr></hr>
+        
+        <div class="row mt-5">
+            <h2 class="text-center mb-4">Barangay Zone III</h2>
+            <div class="col-md-6">
+                <h4>Barangay Zone III Vision</h4>
+                <p>Five years from now, BARANGAY ZONE III will become the Commercial & Institutional Center of the Municipality with a clean & peaceful environment through a God-Centered, Gender-Sensitive, Healthy and Empowered people and a strong, transparent and accountable governance.
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h4>Barangay Zone III Mission</h4>
+                <p>The Barangay Government Unit of Zone III shall have component, committed, honest, compassionate and yard-working Barangay Officials effective and efficient in the delivery of Quality Health, Education, Environment, Infrastructure, Sports and Cultural Development Program and basic Social Services Programs through a armstrong partnership between and among the constituents, officials and stakeholders of the Barangay.
+                </p>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Login Modal -->
     <div class="modal fade login-modal" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">

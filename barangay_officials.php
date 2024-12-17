@@ -1,35 +1,40 @@
 <?php
     include 'config.php';
     include 'side_nav.php'; 
-
-    $barangay_officials = [];
-
-     $query = "SELECT * FROM barangay_officials";
-        $result = mysqli_query($conn, $query);
-
-    if ($result) {
-        $barangay_officials = mysqli_fetch_all($result, MYSQLI_ASSOC);
-    } else {
-        echo "Error fetching officials: " . mysqli_error($conn);
-    }
+    include 'includes/alerts.php';
 
     $results_per_page = 10;
-
     $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-
     $start_limit = ($page - 1) * $results_per_page;
 
-    $total_results = $conn->query("SELECT COUNT(*) AS total FROM barangay_officials")->fetch_assoc()['total'];
+    $search_term = isset($_GET['search']) ? '%' . $_GET['search'] . '%' : '%';
 
-    $sql = "SELECT * FROM barangay_officials LIMIT $start_limit, $results_per_page";
-    $result = $conn->query($sql);
+    $query = "
+        SELECT bo.official_id, bo.name, bo.position, bo.purok_id, bo.contact_number, bo.email, bo.status, bo.date_assigned,
+            p.purok_name
+        FROM barangay_officials AS bo
+        LEFT JOIN puroks AS p ON bo.purok_id = p.purok_id
+        WHERE (bo.name LIKE ? OR p.purok_name LIKE ?) 
+        LIMIT ?, ?";
 
-    $officials = [];
-    while ($row = $result->fetch_assoc()) {
-        $officials[] = $row;
-    }
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param('ssii', $search_term, $search_term, $start_limit, $results_per_page);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $barangay_officials = $result->fetch_all(MYSQLI_ASSOC);
 
+    $total_query = "
+        SELECT COUNT(*) AS total
+        FROM barangay_officials AS bo
+        LEFT JOIN puroks AS p ON bo.purok_id = p.purok_id
+        WHERE bo.name LIKE ? OR p.purok_name LIKE ?";
+    $stmt = $conn->prepare($total_query);
+    $stmt->bind_param('ss', $search_term, $search_term);
+    $stmt->execute();
+    $total_results = $stmt->get_result()->fetch_assoc()['total'];
     $total_pages = ceil($total_results / $results_per_page);
+
+    $puroks = $conn->query("SELECT * FROM puroks")->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -77,7 +82,7 @@
                     <th>ID</th>
                     <th>Name</th>
                     <th>Position</th>
-                    <th>Address</th>
+                    <th>Purok</th>
                     <th>Contact Number</th>
                     <th>Email</th>
                     <th>Status</th>
@@ -92,15 +97,27 @@
                         <td><?= htmlspecialchars($barangay_official['official_id']) ?></td>
                         <td><?= htmlspecialchars($barangay_official['name']) ?></td>
                         <td><?= htmlspecialchars($barangay_official['position']) ?></td>
-                        <td><?= htmlspecialchars($barangay_official['address']) ?></td>
+                        <td><?= htmlspecialchars($barangay_official['purok_name']) ?></td>
                         <td><?= htmlspecialchars($barangay_official['contact_number']) ?></td>
                         <td><?= htmlspecialchars($barangay_official['email']) ?></td>
                         <td><?= htmlspecialchars($barangay_official['status'] ?? 'Active') ?></td>
                         <td><?= htmlspecialchars($barangay_official['date_assigned']) ?></td>
-                        <td>
-                            <button class="btn btn-info btn-sm view-btn" data-id="<?= $barangay_official['official_id'] ?>"><i class="fas fa-eye"></i></button>
-                            <button class="btn btn-warning btn-sm edit-btn" data-id="<?= $barangay_official['official_id'] ?>" data-bs-toggle="modal" data-bs-target="#editModal"
-                            ><i class="fas fa-edit"></i></button>
+                        <td>   
+
+                            <button 
+                                class="btn btn-sm btn-warning edit-btn"
+                                data-id="<?= $barangay_official['official_id']; ?>" 
+                                data-name="<?= $barangay_official['name']; ?>"
+                                data-position="<?= $barangay_official['position']; ?>"
+                                data-purok="<?= $barangay_official['purok_id']; ?>"
+                                data-contact="<?= $barangay_official['contact_number']; ?>"
+                                data-email="<?= $barangay_official['email']; ?>"
+                                data-date="<?= $barangay_official['date_assigned']; ?>"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editModal">
+                                Edit
+                            </button>
+
                             <button 
                                 class="btn btn-sm toggle-status-btn <?= ($barangay_official['status'] === 'Inactive') ? 'btn-success' : 'btn-danger' ?>" 
                                 data-id="<?= $barangay_official['official_id'] ?>" 
@@ -160,7 +177,7 @@
                     <div class="mb-3">
                         <label for="officialPosition" class="form-label">Position</label>
                         <select class="form-control" id="officialPosition" name="officialPosition" required>
-                            <option>-select-</option>
+                            <option value="">Select Position</option>
                             <option value="Barangay Captain">Barangay Captain</option>
                             <option value="Barangay Kagawad">Barangay Kagawad</option>
                             <option value="Barangay Secretary">Barangay Secretary</option>
@@ -170,32 +187,12 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="officialAddress" class="form-label">Address</label>
-                        <select class="form-control" id="officialAddress" name="officialAddress" required>
-                            <option>-select-</option>
-                                <option value="Purok Sto.Niño-Apo Beach">Purok Sto.Niño-Apo Beach</option>
-                                <option value="Purok Bayabas-Apo Beach">Purok Bayabas-Apo Beach</option>
-                                <option value="Purok Centro-Apo Beach">Purok Centro-Apo Beach</option>
-                                <option value="Purok Leytenians-Apo Beach">Purok Leytenians-Apo Beach</option>
-                                <option value="Purok Mahayahay-Apo Beach">Purok Mahayahay-Apo Beach</option>
-                                <option value="Purok Kalubihan-Apo Beach">Purok Kalubihan-Apo Beach</option>
-                                <option value="Purok Badjaoan-Apo Beach">Purok Badjaoan-Apo Beach</option>                                
-                                <option value="Purok Bonggahan">Purok Bonggahan</option>
-                                <option value="Purok Madasigon">Purok Madasigon</option>
-                                <option value="Purok Kapayapaan-Amlo Subd">Purok Kapayapaan-Amlo Subd</option>
-                                <option value="Purok Bougainvilla">Purok Bougainvilla</option>
-                                <option value="Purok Federation President">Purok Federation President</option>
-                                <option value="Purok Miranda">Purok Miranda</option>
-                                <option value="Purok Kaunlaran-Sto.Niño Village">Purok Kaunlaran-Sto.Niño Village</option>
-                                <option value="Purok Talisay-Ceboley Beach">Purok Talisay-Ceboley Beach</option>
-                                <option value="Purok Dapsap-Ceboley Beach">Purok Dapsap-Ceboley Beach</option>
-                                <option value="Purok Sampaguita-Ceboley Beach">Purok Sampaguita-Ceboley Beach</option>
-                                <option value="Purok Kagitingan-Kapihan">Purok Kagitingan-Kapihan</option>
-                                <option value="Purok Kaimito-Bagumbayan">Purok Kaimito-Bagumbayan</option>
-                                <option value="Purok Pakigdait-Bagumbayan">Purok Pakigdait-Bagumbayan</option>
-                                <option value="Purok Pagkakaisa-Bagumbayan">Purok Pagkakaisa-Bagumbayan</option>
-                                <option value="Purok Pag-asa-Bagumbayan">Purok Pag-asa-Bagumbayan</option>
-                                <option value="Purok Bagong Silang-sitio Doring Bendigo">Purok Bagong Silang-sitio Doring Bendigo</option>
+                        <label for="officialPurok" class="form-label">Purok</label>
+                        <select class="form-control" id="officialPurok" name="officialPurok" required>
+                                <option value="">Select Purok</option>
+                                <?php foreach ($puroks as $purok): ?>
+                                    <option value="<?= $purok['purok_id']; ?>"><?= $purok['purok_name']; ?></option>
+                                <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -220,37 +217,17 @@
             </div>
         </div>
 
-        <!-- View Barangay Official Modal -->
-        <div class="modal fade" id="viewOfficialModal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">View Barangay Official</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p><strong>Name:</strong> <span id="viewName"></span></p>
-                        <p><strong>Position:</strong> <span id="viewPosition"></span></p>
-                        <p><strong>Address:</strong> <span id="viewAddress"></span></p>
-                        <p><strong>Contact:</strong> <span id="viewContact"></span></p>
-                        <p><strong>Email:</strong> <span id="viewEmail"></span></p>
-                        <p><strong>Status:</strong> <span id="viewStatus"></span></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Edit Barangay Official Modal -->
         <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <form id="editForm" action="edit_officials.php" method="POST">
-                    <input type="hidden" name="official_id" id="official_id">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">Edit Official</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
+                            <input type="hidden" name="official_id" id="official_id">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Name</label>
                                 <input type="text" class="form-control" id="name" name="name" required autofocus>
@@ -258,7 +235,7 @@
                             <div class="mb-3">
                                 <label for="position" class="form-label">Position</label>
                                 <select class="form-control" id="position" name="position" required autofocus>
-                                    <option>-select-</option>
+                                    <option value="">-select-</option>
                                     <option value="Barangay Captain">Barangay Captain</option>
                                     <option value="Barangay Kagawad">Barangay Kagawad</option>
                                     <option value="Barangay Secretary">Barangay Secretary</option>
@@ -268,32 +245,12 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="address" class="form-label">Address</label>
-                                <select class="form-control" id="address" name="address" required autofocus>
-                                    <option>-select-</option>
-                                        <option value="Purok Sto.Niño-Apo Beach">Purok Sto.Niño-Apo Beach</option>
-                                        <option value="Purok Bayabas-Apo Beach">Purok Bayabas-Apo Beach</option>
-                                        <option value="Purok Centro-Apo Beach">Purok Centro-Apo Beach</option>
-                                        <option value="Purok Leytenians-Apo Beach">Purok Leytenians-Apo Beach</option>
-                                        <option value="Purok Mahayahay-Apo Beach">Purok Mahayahay-Apo Beach</option>
-                                        <option value="Purok Kalubihan-Apo Beach">Purok Kalubihan-Apo Beach</option>
-                                        <option value="Purok Badjaoan-Apo Beach">Purok Badjaoan-Apo Beach</option>                                
-                                        <option value="Purok Bonggahan">Purok Bonggahan</option>
-                                        <option value="Purok Madasigon">Purok Madasigon</option>
-                                        <option value="Purok Kapayapaan-Amlo Subd">Purok Kapayapaan-Amlo Subd</option>
-                                        <option value="Purok Bougainvilla">Purok Bougainvilla</option>
-                                        <option value="Purok Federation President">Purok Federation President</option>
-                                        <option value="Purok Miranda">Purok Miranda</option>
-                                        <option value="Purok Kaunlaran-Sto.Niño Village">Purok Kaunlaran-Sto.Niño Village</option>
-                                        <option value="Purok Talisay-Ceboley Beach">Purok Talisay-Ceboley Beach</option>
-                                        <option value="Purok Dapsap-Ceboley Beach">Purok Dapsap-Ceboley Beach</option>
-                                        <option value="Purok Sampaguita-Ceboley Beach">Purok Sampaguita-Ceboley Beach</option>
-                                        <option value="Purok Kagitingan-Kapihan">Purok Kagitingan-Kapihan</option>
-                                        <option value="Purok Kaimito-Bagumbayan">Purok Kaimito-Bagumbayan</option>
-                                        <option value="Purok Pakigdait-Bagumbayan">Purok Pakigdait-Bagumbayan</option>
-                                        <option value="Purok Pagkakaisa-Bagumbayan">Purok Pagkakaisa-Bagumbayan</option>
-                                        <option value="Purok Pag-asa-Bagumbayan">Purok Pag-asa-Bagumbayan</option>
-                                        <option value="Purok Bagong Silang-sitio Doring Bendigo">Purok Bagong Silang-sitio Doring Bendigo</option>
+                                <label for="purok" class="form-label">Purok</label>
+                                <select class="form-control" id="purok" name="purok" required autofocus>
+                                    <option value="">Select Purok</option>
+                                    <?php foreach ($puroks as $purok): ?>
+                                        <option value="<?= $purok['purok_id']; ?>"><?= $purok['purok_name']; ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -318,8 +275,7 @@
             </div>
         </div>
 
-
-        <!-- Confirm Activate/Deactivate Modal -->
+        <!-- Activate/Deactivate Modal -->
         <div class="modal fade" id="statusModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -362,44 +318,33 @@
             })
                 .then(response => response.text())
                 .then(data => {
-                    alert(data); // Show success or error message
-                    location.reload(); // Refresh the page to show updated data
+                    alert(data); 
+                    location.reload(); 
                 })
                 .catch(error => console.error('Error adding official:', error));
         });
 
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // Fetch Barangay Officials
-            fetch('barangay_officials_data.php')
-                .then(response => response.json())
-                .then(data => {
-                    const officialsList = document.getElementById('officialsList');
-                    data.officials.forEach(official => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${official.name}</td>
-                            <td>${official.role}</td>
-                            <td>${official.status}</td>
-                            <td>
-                                <button class="btn btn-warning btn-sm edit-official" data-id="${official.id}">Edit</button>
-                                <button class="btn btn-danger btn-sm archive-official" data-id="${official.id}">Archive</button>
-                            </td>
-                        `;
-                        officialsList.appendChild(row);
-                    });
-                })
-                .catch(error => console.error('Error fetching barangay officials:', error));
+        // Edit
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Populate the modal fields with data attributes
+                document.getElementById('official_id').value = this.getAttribute('data-id');
+                document.getElementById('name').value = this.getAttribute('data-name');
+                document.getElementById('position').value = this.getAttribute('data-position');
+                document.getElementById('purok').value = this.getAttribute('data-purok');
+                document.getElementById('contact_number').value = this.getAttribute('data-contact');
+                document.getElementById('email').value = this.getAttribute('data-email');
+                document.getElementById('date_assigned').value = this.getAttribute('data-date');
+            });
         });
 
-        document.addEventListener("DOMContentLoaded", function () {
-            // View official details
-            document.querySelectorAll(".view-btn").forEach(button => {
-                button.addEventListener("click", function () {
-                    const officialId = this.dataset.id;
+        // View official details
+        document.querySelectorAll(".view-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                const officialId = this.dataset.id;
 
-                    fetch(`get_official.php?id=${officialId}`)
-                        .then(response => response.json())
+                fetch(`get_official.php?id=${officialId}`)
+                    .then(response => response.json())
                         .then(data => {
                             document.getElementById("viewName").textContent = data.name;
                             document.getElementById("viewPosition").textContent = data.position;
@@ -435,7 +380,7 @@
                             document.getElementById("official_id").value = data.official_id;
                             document.getElementById("name").value = data.name;
                             document.getElementById("position").value = data.position;
-                            document.getElementById("address").value = data.address;
+                            document.getElementById("purok").value = data.purok;
                             document.getElementById("contact_number").value = data.contact_number;
                             document.getElementById("email").value = data.email;
                             document.getElementById("date_assigned").value = data.date_assigned;
