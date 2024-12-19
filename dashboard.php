@@ -23,10 +23,10 @@
         SELECT COUNT(DISTINCT hm.member_id) AS total
         FROM household_members hm
         INNER JOIN household h ON hm.household_id = h.household_id  
-        WHERE hm.archived = 0 AND h.archived = 0
+        WHERE hm.archived = 0 
     ")->fetch_assoc()['total'];
 
-    $total_households = $conn->query("SELECT COUNT(*) AS total FROM household WHERE archived = 0")->fetch_assoc()['total'];
+    $total_households = $conn->query("SELECT COUNT(*) AS total FROM household WHERE archived = 0 AND status = 'Active'")->fetch_assoc()['total'];
 
     $total_senior_citizens = (int) $conn->query(" 
         SELECT COALESCE(COUNT(*), 0) AS total 

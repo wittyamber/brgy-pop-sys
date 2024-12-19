@@ -1,11 +1,10 @@
 <?php
-    require 'config.php'; // Database connection
+    require '../config.php'; // Database connection
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['type'])) {
         $type = $_GET['type'];
-        $tableData = []; // Array to hold table data
+        $tableData = []; 
 
-        // Adjust queries based on the selected type
         if ($type === 'quarterly') {
             $query = "SELECT QUARTER(created_at) AS period, COUNT(*) AS population
                       FROM household_members 
@@ -38,7 +37,6 @@
                       GROUP BY p.purok_name";
         }
 
-        // Execute the query
         $result = $conn->query($query);
         if ($result) {
             while ($row = $result->fetch_assoc()) {
@@ -62,7 +60,6 @@
             }
         }
 
-        // Return data as JSON
         echo json_encode($tableData);
         exit();
     }

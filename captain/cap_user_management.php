@@ -1,8 +1,8 @@
 <?php
     session_start();
-    include 'config.php';
-    include 'side_nav.php';
-    include 'includes/alerts.php';
+    include '../config.php';
+    include 'side_navigation.php';
+    include '../includes/alerts.php';
 
     // Pagination settings
     $limit = 10; // Number of users per page
@@ -48,7 +48,7 @@
     <!-- Bootstrap JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" href="css/household.css">
+    <link rel="stylesheet" href="../css/household.css">
 </head>
 <body>
     <div class="container mt-5">
@@ -63,7 +63,7 @@
                         <button type="button" class="btn btn-primary" id="searchBtn">
                             <i class="fas fa-search me-1"></i> Search
                         </button>
-                        <a href="user_management.php" class="btn btn-secondary">
+                        <a href="cap_user_management.php" class="btn btn-secondary">
                             <i class="fas fa-undo me-1"></i> Reset Filter
                         </a>
                     </div>
@@ -91,7 +91,7 @@
             <tbody>
             <?php foreach ($users as $index => $user): ?>
                 <tr>
-                    <td><?= $offset + $index + 1 ?></td> <!-- Row Number -->
+                    <td><?= $offset + $index + 1 ?></td> 
                     <td><?= $user['name'] ?></td>
                     <td><?= $user['username'] ?></td>
                     <td><?= $user['role'] ?></td>
@@ -116,7 +116,7 @@
             <ul class="pagination justify-content-center">
                 <?php if ($page > 1): ?>
                     <li class="page-item">
-                        <a class="page-link" href="user_management.php?page=<?= $page - 1 ?>" aria-label="Previous">
+                        <a class="page-link" href="cap_user_management.php?page=<?= $page - 1 ?>" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -124,13 +124,13 @@
 
                 <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                     <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-                        <a class="page-link" href="user_management.php?page=<?= $i ?>"><?= $i ?></a>
+                        <a class="page-link" href="cap_user_management.php?page=<?= $i ?>"><?= $i ?></a>
                     </li>
                 <?php endfor; ?>
 
                 <?php if ($page < $totalPages): ?>
                     <li class="page-item">
-                        <a class="page-link" href="user_management.php?page=<?= $page + 1 ?>" aria-label="Next">
+                        <a class="page-link" href="cap_user_management.php?page=<?= $page + 1 ?>" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
@@ -185,7 +185,6 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="viewDetails">
-                    <!-- Content dynamically loaded via JS -->
                 </div>
             </div>
         </div>
@@ -237,20 +236,20 @@
 
             window.location.href = url.toString(); 
         });
-
+    
 
         // Add
         document.getElementById('addUserForm').addEventListener('submit', (e) => {
             e.preventDefault();
 
-            fetch('add_user.php', {
+            fetch('cap_add_user.php', {
                 method: 'POST',
                 body: new FormData(e.target),
             })
                 .then(response => response.text())
                 .then(data => {
                     alert(data);
-                    location.reload(); // Reload to reflect new user
+                    location.reload();
                 })
                 .catch(error => console.error('Error adding user:', error));
         });
@@ -258,11 +257,10 @@
 
         // JavaScript to handle view, edit, and toggle status actions
         document.addEventListener('DOMContentLoaded', () => {
-            // View Button Click
             document.querySelectorAll('.view-btn').forEach(button => {
                 button.addEventListener('click', () => {
                     const userId = button.getAttribute('data-id');
-                    fetch(`view_user.php?id=${userId}`)
+                    fetch(`cap_view_user.php?id=${userId}`)
                         .then(response => response.text())
                         .then(data => {
                             document.getElementById('viewDetails').innerHTML = data;
@@ -277,7 +275,7 @@
             document.querySelectorAll('.edit-btn').forEach(button => {
                 button.addEventListener('click', () => {
                     const userId = button.getAttribute('data-id');
-                    fetch(`get_user.php?id=${userId}`)
+                    fetch(`cap_get_user.php?id=${userId}`)
                         .then(response => response.json())
                         .then(user => {
                             document.getElementById('edit-id').value = user.id;
@@ -294,7 +292,7 @@
             // Edit Form Submission
             document.getElementById('editForm').addEventListener('submit', (e) => {
                 e.preventDefault();
-                fetch('edit_user.php', {
+                fetch('cap_edit_user.php', {
                     method: 'POST',
                     body: new FormData(e.target)
                 })
@@ -313,7 +311,7 @@
         document.getElementById('searchUser').addEventListener('input', (e) => {
             const query = e.target.value;
 
-            fetch(`search_user.php?query=${query}`)
+            fetch(`cap_search_user.php?query=${query}`)
                 .then(response => response.json())
                 .then(users => {
                     const tableBody = document.querySelector('#userTable tbody');
@@ -343,7 +341,7 @@
             button.addEventListener('click', () => {
                 const userId = button.getAttribute('data-id');
                 const status = button.getAttribute('data-status') === 'Active' ? 'Inactive' : 'Active';
-                fetch(`toggle_status.php?id=${userId}&status=${status}`)
+                fetch(`cap_toggle_status.php?id=${userId}&status=${status}`)
                     .then(() => location.reload());
             });
         });

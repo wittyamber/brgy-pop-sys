@@ -7,34 +7,49 @@
     $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
     $start_limit = ($page - 1) * $results_per_page;
 
-    $search_term = isset($_GET['search']) ? '%' . $_GET['search'] . '%' : '%';
+    // Prepare the filters based on the user input
+    $rawSearch = $_GET['search'] ?? '';
+    $searchWildcard = !empty($rawSearch) ? "%$rawSearch%" : '';
+    $filterPosition = isset($_GET['position']) ? '%' . $_GET['position'] . '%' : '%';
+    $filterPurok = isset($_GET['purok']) ? '%' . $_GET['purok'] . '%' : '%';
+    $filterStatus = isset($_GET['status']) ? $_GET['status'] : '%';
 
+    // Modify your query to include filters for position, purok, and status
     $query = "
         SELECT bo.official_id, bo.name, bo.position, bo.purok_id, bo.contact_number, bo.email, bo.status, bo.date_assigned,
             p.purok_name
         FROM barangay_officials AS bo
         LEFT JOIN puroks AS p ON bo.purok_id = p.purok_id
         WHERE (bo.name LIKE ? OR p.purok_name LIKE ?) 
+        AND bo.position LIKE ? 
+        AND bo.status LIKE ?
         LIMIT ?, ?";
 
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ssii', $search_term, $search_term, $start_limit, $results_per_page);
+
+    // Bind the parameters
+    $stmt->bind_param('ssssis', $search, $filterPosition, $filterPurok, $filterStatus, $start_limit, $results_per_page);
     $stmt->execute();
     $result = $stmt->get_result();
     $barangay_officials = $result->fetch_all(MYSQLI_ASSOC);
 
+    // Count the total results with the same filters
     $total_query = "
         SELECT COUNT(*) AS total
         FROM barangay_officials AS bo
         LEFT JOIN puroks AS p ON bo.purok_id = p.purok_id
-        WHERE bo.name LIKE ? OR p.purok_name LIKE ?";
+        WHERE bo.name LIKE ? OR p.purok_name LIKE ? 
+        AND bo.position LIKE ? 
+        AND bo.status LIKE ?";
     $stmt = $conn->prepare($total_query);
-    $stmt->bind_param('ss', $search_term, $search_term);
+    $stmt->bind_param('ssss', $search_term, $purok_filter, $position_filter, $status_filter);
     $stmt->execute();
     $total_results = $stmt->get_result()->fetch_assoc()['total'];
     $total_pages = ceil($total_results / $results_per_page);
 
     $puroks = $conn->query("SELECT * FROM puroks")->fetch_all(MYSQLI_ASSOC);
+    $positions = ['Captain', 'Secretary', 'Treasurer', 'Member']; // Example positions, update as needed
+    $statuses = ['Active', 'Inactive'];
 ?>
 
 <!DOCTYPE html>
@@ -52,27 +67,63 @@
     <div class="container">
         <h2 class="text-center">Barangay Officials</h2>
 
-        <!-- Search Bar and Add Button -->
-        <div class="d-flex justify-content-center align-items-center my-4">
-            <form class="search-form" method="GET" action="barangay_officials.php">
-                <div class="input-group">
-                    <input 
-                        class="form-control me-2" 
-                        type="text" 
-                        name="search" 
-                        placeholder="Search by name, address, etc." 
-                        value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" 
-                    />
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i>
-                    </button>
+        <!-- Search Bar and Filter Form -->
+        <form method="GET" action="barangay_officials.php" class="mb-3">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input
+                        class="form-control"
+                        type="text"
+                        name="search"
+                        placeholder="Search by name, address, etc."
+                        value="<?= htmlspecialchars($rawSearch) ?>">
                 </div>
-            </form>
+                <div class="col-md-2">
+                    <select class="form-select" name="purok">
+                        <option value="">Purok</option>
+                        <?php
+                            $purokResult = $conn->query("SELECT DISTINCT purok_name FROM puroks ORDER BY purok_name ASC");
+                            while ($purok = $purokResult->fetch_assoc()):
+                        ?>
+                            <option value="<?= $purok['purok_name'] ?>" <?= $purok['purok_name'] == $filterPurok ? 'selected' : '' ?>>
+                                <?= $purok['purok_name'] ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="position">
+                        <option value="">Position</option>
+                        <option value="Barangay Captain">Barangay Captain</option>
+                        <option value="Barangay Kagawad">Barangay Kagawad</option>
+                        <option value="Barangay Secretary">Barangay Secretary</option>
+                        <option value="Barangay Treasurer">Barangay Treasurer</option>
+                        <option value="SK Chairman">SK Chairman</option>
+                        <option value="SK Kagawad">SK Kagawad</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="status">
+                        <option value="">Status</option>
+                        <option value="Active" <?= $filterStatus == 'Active' ? 'selected' : '' ?>>Active</option>
+                        <option value="Inactive" <?= $filterStatus == 'Inactive' ? 'selected' : '' ?>>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary w-50 me-2">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <a href="barangay_officials.php" class="btn btn-secondary w-50">
+                        <i class="fas fa-undo"></i> Reset Filters
+                    </a>
+                </div>
+            </div>
+        </form>
 
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOfficialModal">
-                <i class="fas fa-user-plus"></i> Add Official
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addOfficialModal">
+                <i class="fas fa-plus"></i> Add Official
             </button>
-
         </div>
 
         <!-- Official List Table -->
@@ -115,7 +166,7 @@
                                 data-date="<?= $barangay_official['date_assigned']; ?>"
                                 data-bs-toggle="modal" 
                                 data-bs-target="#editModal">
-                                Edit
+                                <i class="fas fa-edit"></i>
                             </button>
 
                             <button 
@@ -396,7 +447,6 @@
                 });
             });
 
-
             // Activate/Deactivate official
             document.querySelectorAll(".toggle-status-btn").forEach(button => {
                 button.addEventListener("click", function () {
@@ -422,7 +472,7 @@
                     modal.show();
                 });
             });
-        });
+        
 
         //Pagination
         document.querySelectorAll('.pagination a').forEach(link => {

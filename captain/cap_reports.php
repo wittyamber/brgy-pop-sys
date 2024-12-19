@@ -1,6 +1,6 @@
 <?php
-    require 'config.php';
-    include 'side_nav.php';
+    require '../config.php';
+    include 'side_navigation.php';
 ?>
 
 <!DOCTYPE html>
@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 
-    <link rel="stylesheet" href="css/reports.css">
+    <link rel="stylesheet" href="../css/reports.css">
 </head>
 <body>
 <div class="container mt-5">
@@ -41,11 +41,9 @@
             <table id="populationTable" class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <!-- Table headers will dynamically change -->
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Rows will be dynamically populated -->
                 </tbody>
             </table>
         </div>
@@ -69,22 +67,18 @@
 
             // Function to fetch and display table data
             async function fetchTableData(reportType) {
-                const response = await fetch(`generate_report.php?type=${reportType}`);
+                const response = await fetch(`cap_generate_report.php?type=${reportType}`);
                 const data = await response.json();
 
-                // Clear table content
                 populationTableHead.innerHTML = '';
                 populationTableBody.innerHTML = '';
 
-                // Handle different report types
                 if (reportType === 'age-distribution') {
-                    // Set table headers
                     populationTableHead.innerHTML = `
                         <th>Gender</th>
                         <th>Minors</th>
                         <th>Adults</th>
                     `;
-                    // Populate table rows
                     data.forEach(row => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -95,12 +89,10 @@
                         populationTableBody.appendChild(tr);
                     });
                 } else if (reportType === 'purok-population' || reportType === 'purok-households') {
-                    // Set table headers
                     populationTableHead.innerHTML = `
                         <th>Purok Name</th>
                         <th>Count</th>
                     `;
-                    // Populate table rows
                     data.forEach(row => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -110,12 +102,10 @@
                         populationTableBody.appendChild(tr);
                     });
                 } else {
-                    // Set table headers
                     populationTableHead.innerHTML = `
                         <th>Period</th>
                         <th>Population</th>
                     `;
-                    // Populate table rows
                     data.forEach(row => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -126,24 +116,20 @@
                     });
                 }
 
-                // Hide chart container for non-population trend types
                 lineChartContainer.style.display = 'none';
             }
 
-            // Function to fetch and display line chart data
             async function fetchLineChartData(reportType) {
-                const response = await fetch(`generate_report.php?type=${reportType}`);
+                const response = await fetch(`cap_generate_report.php?type=${reportType}`);
                 const data = await response.json();
 
                 const labels = data.map(row => row.Period);
                 const values = data.map(row => row.Population);
 
-                // Destroy existing chart instance
                 if (lineChart) {
                     lineChart.destroy();
                 }
 
-                // Create new line chart
                 lineChart = new Chart(lineChartCanvas, {
                     type: 'line',
                     data: {
@@ -166,24 +152,21 @@
                     }
                 });
 
-                // Hide table and show chart container
                 populationTableContainer.style.display = 'none';
                 lineChartContainer.style.display = 'block';
             }
 
-            // Event listener for report type selection
             reportTypeSelect.addEventListener('change', function () {
                 const selectedType = reportTypeSelect.value;
 
                 if (selectedType === 'quarterly' || selectedType === 'semi-annual' || selectedType === 'annual') {
-                    fetchLineChartData(selectedType); // Show line chart
+                    fetchLineChartData(selectedType);
                 } else {
-                    fetchTableData(selectedType); // Show table
+                    fetchTableData(selectedType);
                     populationTableContainer.style.display = 'block';
                 }
             });
 
-            // Load default report type on page load
             fetchLineChartData('annual');
         });
     </script>

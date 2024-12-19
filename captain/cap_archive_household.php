@@ -2,23 +2,21 @@
     require '../config.php';
     session_start();
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $householdId = $_POST['household_id'];
+    if (isset($_POST['archive_household'])) {
+        $household_id = $_POST['household_id'];
     
-        // Update the household to mark it as archived
-        $stmt = $conn->prepare("UPDATE households SET archived = 1 WHERE household_id = ?");
-        $stmt->bind_param("i", $householdId);
+        $sql = "UPDATE household SET archived = 1, status = 'Archived' WHERE household_id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $household_id);
     
         if ($stmt->execute()) {
-            session_start();
-            $_SESSION['success_message'] = "Household successfully archived.";
+            $_SESSION['message'] = "Household archived successfully!";
+            header("Location: cap_household.php");
+            exit();
         } else {
-            session_start();
-            $_SESSION['success_message'] = "Failed to archive household.";
+            $_SESSION['error'] = "Error archiving household: " . $conn->error;
+            header("Location: cap_household.php");
+            exit();
         }
-    
-        $stmt->close();
-        header("Location: cap_household.php");
-        exit();
     }
 ?>

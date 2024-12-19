@@ -1,368 +1,213 @@
 <?php
-    require '../config.php';
+    include '../config.php';
     include 'side_navigation.php';
     include '../includes/alerts.php';
 
-    // Start session if not started already
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    // Pagination settings
-    $limit = 10; // Records per page
+    // Fetch Data for Display
+    $search = isset($_GET['search']) ? $_GET['search'] : '';
+    $filter_purok = isset($_GET['filter_purok']) ? $_GET['filter_purok'] : '';
+    $limit = 5; // Number of households per page
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $start = ($page - 1) * $limit;
+    $offset = ($page - 1) * $limit;
 
-    // Search query
-    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-
-    // Base SQL query
-    $sql = "SELECT * FROM households WHERE archived = 0";
-    $params = [];
-    $types = "";
-
-    // If a search term is provided, add search filters
+    // Filtering and Search Query
+    $where = "WHERE h.archived = 0";
     if (!empty($search)) {
-        $sql .= " AND (
-            last_name LIKE ? OR 
-            first_name LIKE ? OR 
-            middle_name LIKE ? OR 
-            address LIKE ? OR 
-            contact_number LIKE ?
-        )";
-        $searchTerm = '%' . $search . '%';
-        $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm];
-        $types = "sssss";
+        $where .= " AND (h.household_number LIKE '%$search%' 
+                    OR CONCAT(m.first_name, ' ', m.last_name) LIKE '%$search%' 
+                    OR p.purok_name LIKE '%$search%')";
+    }
+    if (!empty($filter_purok)) {
+        $where .= " AND p.purok_id = '$filter_purok'";
     }
 
-    // Add pagination to the query
-    $sql .= " ORDER BY last_name ASC LIMIT ?, ?";
-    $params[] = $start;
-    $params[] = $limit;
-    $types .= "ii";
+    // Count total households for pagination
+    $total_result = $conn->query("SELECT COUNT(*) AS total FROM household h 
+                                JOIN puroks p ON h.purok_id = p.purok_id 
+                                JOIN household_members m ON h.household_head_id = m.member_id $where");
+    $total_households = $total_result->fetch_assoc()['total'];
+    $total_pages = ceil($total_households / $limit);
 
-    // Prepare the statement
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        die("SQL error: " . $conn->error);
-    }
+    // Fetch paginated results
+    $sql = "SELECT h.household_id, h.household_number, p.purok_name, 
+                CONCAT(m.first_name, ' ', m.last_name) AS household_head, 
+                h.contact_number, h.total_members 
+            FROM household h
+            JOIN puroks p ON h.purok_id = p.purok_id
+            JOIN household_members m ON h.household_head_id = m.member_id
+            $where
+            ORDER BY h.household_number ASC
+            LIMIT $limit OFFSET $offset";
+    $result = $conn->query($sql);
 
-    // Bind parameters dynamically
-    $stmt->bind_param($types, ...$params);
-
-    // Execute the query
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    // Fetch active households
-    $households = $result->fetch_all(MYSQLI_ASSOC);
-
-    // Total count for pagination
-    $countSql = "SELECT COUNT(*) AS total FROM households WHERE archived = 0";
-    if (!empty($search)) {
-        $countSql .= " AND (
-            last_name LIKE ? OR 
-            first_name LIKE ? OR 
-            middle_name LIKE ? OR 
-            address LIKE ? OR 
-            contact_number LIKE ?
-        )";
-        $countStmt = $conn->prepare($countSql);
-        $countStmt->bind_param("sssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
-        $countStmt->execute();
-        $countResult = $countStmt->get_result();
-        $total_rows = $countResult->fetch_assoc()['total'];
-    } else {
-        $countResult = $conn->query($countSql);
-        $total_rows = $countResult->fetch_assoc()['total'];
-    }
-
-    $total_pages = ceil($total_rows / $limit);
+    // Fetch all puroks for filtering
+    $puroks = $conn->query("SELECT * FROM puroks ORDER BY purok_name ASC");
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IBPMMS | Household </title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>IBPMMS | Household</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
     <link rel="stylesheet" href="../css/household.css">
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="container mt-4">
+        <h2 class="text-center">Households</h2>
 
-        <!-- Household Heads Section -->
-        <h2 class="text-center ">Household Head</h2>
+        <!-- Search, Filter, and Add Household -->
+        <form class="row my-4 g-1 align-items-center" method="get">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control" placeholder="Search households..." value="<?= $search; ?>">
+            </div>
 
-        <!-- Search Bar and Add Button -->
-        <div class="d-flex justify-content-center align-items-center my-4">
+            <div class="col-md-3">
+                <select name="filter_purok" class="form-select">
+                    <option value="">All Puroks</option>
+                    <?php while ($purok = $puroks->fetch_assoc()) : ?>
+                        <option value="<?= $purok['purok_id']; ?>" <?= $filter_purok == $purok['purok_id'] ? 'selected' : ''; ?>>
+                            <?= $purok['purok_name']; ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
 
-            <form class="search-form" method="GET" action="household.php">
-                <div class="input-group">
-                <input 
-                    class="form-control me-2" 
-                    type="text" 
-                    name="search" 
-                    placeholder="Search by name, address, etc." 
-                    value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" 
-                />
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-search"></i>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Search</button>
+            </div>
+
+            <div class="col-md-2">
+                <a href="cap_household.php" class="btn btn-secondary w-100">
+                    <i class="fas fa-undo"></i> Reset Filter
+                </a>
+            </div>
+
+            <div class="col-md-2">
+                <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#addHouseholdModal">
+                    <i class="fas fa-plus"></i> Add Household
                 </button>
-                </div>
-            </form>
+            </div>
+        </form>
 
-            <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#addModal">
-                <i class="fas fa-user-plus"></i> Add Household Head
-            </button>
-        </div>
 
-        <!-- Table and Edit and Archive Buttons -->
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Full Name</th>
-                    <th>Birthdate</th>
-                    <th>Age</th>
-                    <th>Civil Status</th>
-                    <th>Gender</th>
-                    <th>Tribe</th>
-                    <th>Occupation</th>
-                    <th>Address</th>
-                    <th>Contact Number</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($households)): ?>
-                    <?php foreach ($households as $index => $household): ?>
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th style="width: 2%;">No.</th> <!-- Add a column for number -->
+                        <th style="width: 5%;">Household Number</th>
+                        <th>Purok</th>
+                        <th>Household Head</th>
+                        <th>Total Members</th>
+                        <th>Contact Number</th>
+                        <th>Tools</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    // Initialize the counter variable
+                    $counter = 1;
+                    if ($result->num_rows > 0) :
+                        while ($row = $result->fetch_assoc()) :
+                    ?>
+                            <tr>
+                                <!-- Display the counter number -->
+                                <td><?= $counter++; ?></td> <!-- Increment the counter after displaying it -->
+                                <td><?= $row['household_number']; ?></td>
+                                <td><?= $row['purok_name']; ?></td>
+                                <td><?= $row['household_head']; ?></td>
+                                <td><?= $row['total_members']; ?></td>
+                                <td><?= $row['contact_number']; ?></td>
+                                <td>
+                                    <button class="btn btn-info btn-sm" onclick="viewMembers(<?= $row['household_id']; ?>)"><i class="fas fa-eye"></i></button>
+                                    <button class="btn btn-warning btn-sm" onclick="openEditModal(
+                                        '<?= $row['household_id']; ?>',
+                                        '<?= $row['household_number']; ?>',
+                                        '<?= $row['purok_name']; ?>',
+                                        '<?= $row['household_head']; ?>',
+                                        '<?= $row['contact_number']; ?>',
+                                        '<?= $row['total_members']; ?>'
+                                    )"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-danger btn-sm" onclick="openArchiveModal(<?= $row['household_id']; ?>)"><i class="fas fa-archive"></i></button>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else : ?>
                         <tr>
-                            <td><?= ($start + $index + 1); ?></td>
-                            <td><?= $household['last_name'] . ', ' . $household['first_name'] . ' ' . $household['middle_name']; ?></td>
-                            <td><?= $household['birthdate']; ?></td>
-                            <td><?= $household['age']; ?></td>
-                            <td><?= $household['civil_status']; ?></td>
-                            <td><?= $household['gender']; ?></td>
-                            <td><?= $household['tribe']; ?></td>
-                            <td><?= $household['occupation']; ?></td>
-                            <td><?= $household['address']; ?></td>
-                            <td><?= $household['contact_number']; ?></td>
-                            <td>
-
-                            <!-- View Button -->
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#viewHouseholdModal" 
-                                    onclick="loadHouseholdMembers(<?php echo $household_id; ?>)">
-                                <i class="fas fa-eye"></i>
-                            </button>
-
-                            <!-- Edit Button-->
-                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal" 
-                                data-id="<?= $household['household_id']; ?>" 
-                                data-last-name="<?= $household['last_name']; ?>"
-                                data-first-name="<?= $household['first_name']; ?>"
-                                data-middle-name="<?= $household['middle_name']; ?>"
-                                data-gender="<?= $household['gender']; ?>"
-                                data-civil-status="<?= $household['civil_status']; ?>"
-                                data-tribe="<?= $household['tribe']; ?>"
-                                data-occupation="<?= $household['occupation']; ?>"
-                                data-address="<?= $household['address']; ?>"
-                                data-contact-number="<?= $household['contact_number']; ?>">
-                                <i class="fas fa-edit"></i>
-                            </button>
-
-                            <!-- Archive Button -->
-                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#archiveModal"
-                                    data-id="<?= $household['household_id'] ?>">
-                                    <i class="fas fa-archive"></i>
-                                </button>
-                            </td>
+                            <td colspan="7" class="text-center">No households found.</td>
                         </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr><td colspan="11" class="text-center">No household heads found.</td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
 
         <!-- Pagination -->
         <nav>
             <ul class="pagination justify-content-center">
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?= ($i == $page) ? 'active' : ''; ?>">
-                        <a class="page-link" href="household.php?page=<?= $i ?>&search=<?= htmlspecialchars($search) ?>"><?= $i ?></a>
+                <?php for ($i = 1; $i <= $total_pages; $i++) : ?>
+                    <li class="page-item <?= $i == $page ? 'active' : ''; ?>">
+                        <a class="page-link" href="?page=<?= $i; ?>&search=<?= $search; ?>&filter_purok=<?= $filter_purok; ?>">
+                            <?= $i; ?>
+                        </a>
                     </li>
                 <?php endfor; ?>
             </ul>
         </nav>
     </div>
 
-    <!-- Add Household Head Modal -->
-    <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+    <!-- Add Household Modal -->
+    <div class="modal fade" id="addHouseholdModal" tabindex="-1" aria-labelledby="addHouseholdModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form action="cap_add_household.php" method="POST">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addModalLabel">Add Household Head</h5>
+                        <h5 class="modal-title" id="addHouseholdModalLabel">Add Household</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <!-- Add Household Fields -->
                         <div class="mb-3">
-                            <label for="lastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" name="last_name" required>
+                            <label for="household_number" class="form-label">Household Number</label>
+                            <input type="text" class="form-control" name="household_number" required>
                         </div>
                         <div class="mb-3">
-                            <label for="firstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" name="first_name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="middleName" class="form-label">Middle Name</label>
-                            <input type="text" class="form-control" name="middle_name">
-                        </div>
-                        <div class="mb-3">
-                            <label for="birthdate" class="form-label">Birthdate</label>
-                            <input type="date" class="form-control" name="birthdate" required oninput="calculateAge()">
-                        </div>
-                        <div class="mb-3">
-                            <label for="civilStatus" class="form-label">Civil Status</label>
-                            <select class="form-control" name="civil_status">
-                                <option>-select-</option>
-                                <option value="Single">Single</option>
-                                <option value="Married">Married</option>
-                                <option value="Widowed">Widowed</option>
-                                <option value="Live In">Live In</option>
-                                <option value="Separated">Separated</option>
+                            <label for="purok_id" class="form-label">Purok</label>
+                            <select name="purok_id" class="form-select" required>
+                                <option value="">Select Purok</option>
+                                <?php foreach ($puroks as $purok): ?>
+                                    <option value="<?= $purok['purok_id']; ?>"><?= $purok['purok_name']; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="gender" class="form-label">Gender</label>
-                            <select class="form-control" name="gender">
-                                <option>-select-</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
+                            <label for="household_head" class="form-label">Household Head</label>
+                            <select name="household_head" class="form-select" required>
+                                <option value="">Select Household Head</option>
+                                <?php
+                                    $active_members = $conn->query("SELECT member_id, CONCAT(first_name, ' ', last_name) AS name FROM household_members WHERE archived = 0");
+                                    while ($member = $active_members->fetch_assoc()) :
+                                ?>
+                                    <option value="<?= $member['member_id']; ?>"><?= $member['name']; ?></option>
+                                <?php endwhile; ?>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="tribe" class="form-label">Tribe</label>
-                            <select class="form-control" id="tribe" name="tribe" required>
-                                <option>-select-</option>
-                                <option value="none">-None-</option>
-                                <option value="Ata Manobo">Ata Manobo</option>
-                                <option value="Badjao">Badjao</option>
-                                <option value="Bagobo">Bagobo</option>
-                                <option value="Banwaon">Banwaon</option>
-                                <option value="B laan">B laan</option>
-                                <option value="Bukidnon">Bukidnon</option>
-                                <option value="Dibabanwa">Dibabanwa</option>
-                                <option value="Dulangan">Dulangan</option>
-                                <option value="Guiangga">Guiangga</option>
-                                <option value="Higaonon">Higaonon</option>
-                                <option value="JamaMapun">JamaMapun</option>
-                                <option value="Kaagan">Kaagan</option>
-                                <option value="Kalagan">Kalagan</option>
-                                <option value="Kulangan">Kulangan</option>
-                                <option value="Kalbugan">Kalbugan</option>
-                                <option value="Magindanaon">Magindanaon</option>
-                                <option value="Magguangan">Magguangan</option>
-                                <option value="Mamanwa">Mamanwa</option>
-                                <option value="Mandaya">Mandaya</option>
-                                <option value="Mangguwangan">Mangguwangan</option>
-                                <option value="Manobo">Manobo</option>
-                                <option value="Malbog">Malbog</option>
-                                <option value="Maramo">Maramo</option>
-                                <option value="Mansaka">Mansaka</option>
-                                <option value="Matigsalog">Matigsalog</option>
-                                <option value="Palawani">Palawani</option>
-                                <option value="Sama">Sama</option>
-                                <option value="Sangil">Sangil</option>
-                                <option value="Subanon">Subanon</option>
-                                <option value="Tagakaolo">Tagakaolo</option>
-                                <option value="T boli">T boli</option>
-                                <option value="Talandig">Talandig</option>
-                                <option value="Tao-sug">Tao-sug</option>
-                                <option value="Teduary">Teduary</option>
-                                <option value="Ubo">Ubo</option>
-                                <option value="Yakan">Yakan</option>
-                            </select>
+                            <label for="total_members" class="form-label">Total Members</label>
+                            <input type="number" name="total_members" class="form-control" min="1" required>
                         </div>
                         <div class="mb-3">
-                            <label for="occupation" class="form-label">Occupation</label>
-                            <select class="form-control" id="occupation" name="occupation" required>
-                                <option>-select-</option>
-                                <option value="None">None</option>
-                                <option value="Accountant">Accountant</option>
-                                <option value="Assistant">Assistant</option>
-                                <option value="Baker">Baker</option>
-                                <option value="Barber">Barber</option>
-                                <option value="Bookkeeper">Bookkeeper</option>
-                                <option value="Businessman/woman">Businessman/woman</option>
-                                <option value="Butcher">Butcher</option>
-                                <option value="Carpenter">Carpenter</option>
-                                <option value="Cahsier">Cashier</option>
-                                <option value="Construction Worker">Construction Worker</option>
-                                <option value="Civil Servant">Civil Servant</option>
-                                <option value="Chef">Chef</option>
-                                <option value="Doctor">Doctor</option>
-                                <option value="Dentist">Dentist</option>
-                                <option value="Driver">Driver</option>
-                                <option value="Electrician">Electrician</option>
-                                <option value="Farmer">Farmer</option>
-                                <option value="Firefighter">Firefighter</option>
-                                <option value="Fisherman">Fisherman</option>
-                                <option value="Housekeeper">Housekeeper</option>
-                                <option value="Housewife">Housewife</option>
-                                <option value="Lawyer">Lawyer</option>
-                                <option value="Manager">Manager</option>
-                                <option value="Nurse">Nurse</option>
-                                <option value="Office Cleark">Office Clerk</option>
-                                <option value="Overseas Filipino Worker (OFW)">Overseas Filipino Worker (OFW)</option>
-                                <option value="Police Officer">Police Officer</option>
-                                <option value="Salesperson">Salesperson</option>
-                                <option value="Seaman/woman">Seaman/woman</option>
-                                <option value="Soldier">Soldier</option>
-                                <option value="Teacher">Teacher</option>
-                                <option value="Vendor">Vendor</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address</label>
-                            <select class="form-control" id="address" name="address" required>
-                                <option>-select-</option>
-                                <option value="Purok Sto.Niño-Apo Beach">Purok Sto.Niño-Apo Beach</option>
-                                <option value="Purok Bayabas-Apo Beach">Purok Bayabas-Apo Beach</option>
-                                <option value="Purok Centro-Apo Beach">Purok Centro-Apo Beach</option>
-                                <option value="Purok Leytenians-Apo Beach">Purok Leytenians-Apo Beach</option>
-                                <option value="Purok Mahayahay-Apo Beach">Purok Mahayahay-Apo Beach</option>
-                                <option value="Purok Kalubihan-Apo Beach">Purok Kalubihan-Apo Beach</option>
-                                <option value="Purok Badjaoan-Apo Beach">Purok Badjaoan-Apo Beach</option>
-                                <option value="Purok Bonggahan">Purok Bonggahan</option>
-                                <option value="Purok Madasigon">Purok Madasigon</option>
-                                <option value="Purok Kapayapaan-Amlo Subd">Purok Kapayapaan-Amlo Subd</option>
-                                <option value="Purok Bougainvilla">Purok Bougainvilla</option>
-                                <option value="Purok Federation President">Purok Federation President</option>
-                                <option value="Purok Miranda">Purok Miranda</option>
-                                <option value="Purok Kaunlaran-Sto.Niño Village">Purok Kaunlaran-Sto.Niño Village</option>
-                                <option value="Purok Talisay-Ceboley Beach">Purok Talisay-Ceboley Beach</option>
-                                <option value="Purok Dapsap-Ceboley Beach">Purok Dapsap-Ceboley Beach</option>
-                                <option value="Purok Sampaguita-Ceboley Beach">Purok Sampaguita-Ceboley Beach</option>
-                                <option value="Purok Kagitingan-Kapihan">Purok Kagitingan-Kapihan</option>
-                                <option value="Purok Kaimito-Bagumbayan">Purok Kaimito-Bagumbayan</option>
-                                <option value="Purok Pakigdait-Bagumbayan">Purok Pakigdait-Bagumbayan</option>
-                                <option value="Purok Pagkakaisa-Bagumbayan">Purok Pagkakaisa-Bagumbayan</option>
-                                <option value="Purok Pag-asa-Bagumbayan">Purok Pag-asa-Bagumbayan</option>
-                                <option value="Purok Bagong Silang-sitio Doring Bendigo">Purok Bagong Silang-sitio Doring Bendigo</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="contactNumber" class="form-label">Contact Number</label>
+                            <label for="contact_number" class="form-label">Contact Number</label>
                             <input type="text" class="form-control" name="contact_number">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Add Household Head</button>
+                        <button type="submit" class="btn btn-success" name="add_household">Add Household</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </form>
@@ -370,324 +215,142 @@
         </div>
     </div>
 
-    <!-- View Household Members Modal -->
-    <div class="modal fade" id="viewHouseholdModal" tabindex="-1" aria-labelledby="viewHouseholdModalLabel" aria-hidden="true">
+    <!-- View Members Modal -->
+    <div class="modal fade" id="viewMembersModal" tabindex="-1" aria-labelledby="viewMembersModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="viewHouseholdModalLabel">Household Members</h5>
+                    <h5 class="modal-title" id="viewMembersModalLabel">Household Members</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Birthdate</th>
-                                <th>Gender</th>
+                                <th>Member Name</th>
                                 <th>Relationship</th>
-                                <th>Occupation</th>
                             </tr>
                         </thead>
-                        <tbody id="householdMembersTableBody">
-                            <!-- Household members will load here dynamically -->
-                            <tr>
-                                <td colspan="5" class="text-center">Loading...</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="householdMembersTable"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Edit Modal -->
-    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <!-- Edit Household Modal -->
+    <div class="modal fade" id="editHouseholdModal" tabindex="-1" aria-labelledby="editHouseholdModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="cap_edit_household.php" method="POST">
-                    <input type="hidden" name="household_id" id="editHouseholdId">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="editModalLabel">Edit Household Head</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Same fields as in the Add Modal, but pre-populated -->
-                        <div class="mb-3">
-                            <label for="lastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" name="last_name" id="editLastName" required autofocus>
-                        </div>
-                        <div class="mb-3">
-                            <label for="firstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" name="first_name" id="editFirstName" required autofocus>
-                        </div>
-                        <div class="mb-3">
-                            <label for="middleName" class="form-label">Middle Name</label>
-                            <input type="text" class="form-control" name="middle_name" id="editMiddleName" required autofocus>
-                        </div>
-                        <div class="mb-3">
-                            <label for="birthdate" class="form-label">Birthdate</label>
-                            <input type="date" class="form-control" name="birthdate" required oninput="calculateAge()" autofocus>
-                        </div>
-                        <div class="mb-3">
-                            <label for="civilStatus" class="form-label">Civil Status</label>
-                            <select class="form-control" name="civil_status" id="editcivil_status" autofocus>
-                                <option>-select-</option>
-                                <option value="Single">Single</option>
-                                <option value="Married">Married</option>
-                                <option value="Widowed">Widowed</option>
-                                <option value="Live In">Live In</option>
-                                <option value="Separated">Separated</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="gender" class="form-label">Gender</label>
-                            <select class="form-control" name="gender" id="editGender" autofocus>
-                                <option>-select-</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="tribe" class="form-label">Tribe</label>
-                            <select class="form-control" id="editTribe" name="tribe" required autofocus>
-                                <option>-select-</option>
-                                <option value="none">-None-</option>
-                                <option value="Ata Manobo">Ata Manobo</option>
-                                <option value="Badjao">Badjao</option>
-                                <option value="Bagobo">Bagobo</option>
-                                <option value="Banwaon">Banwaon</option>
-                                <option value="B laan">B laan</option>
-                                <option value="Bukidnon">Bukidnon</option>
-                                <option value="Dibabanwa">Dibabanwa</option>
-                                <option value="Dulangan">Dulangan</option>
-                                <option value="Guiangga">Guiangga</option>
-                                <option value="Higaonon">Higaonon</option>
-                                <option value="JamaMapun">JamaMapun</option>
-                                <option value="Kaagan">Kaagan</option>
-                                <option value="Kalagan">Kalagan</option>
-                                <option value="Kulangan">Kulangan</option>
-                                <option value="Kalbugan">Kalbugan</option>
-                                <option value="Magindanaon">Magindanaon</option>
-                                <option value="Magguangan">Magguangan</option>
-                                <option value="Mamanwa">Mamanwa</option>
-                                <option value="Mandaya">Mandaya</option>
-                                <option value="Mangguwangan">Mangguwangan</option>
-                                <option value="Manobo">Manobo</option>
-                                <option value="Malbog">Malbog</option>
-                                <option value="Maramo">Maramo</option>
-                                <option value="Mansaka">Mansaka</option>
-                                <option value="Matigsalog">Matigsalog</option>
-                                <option value="Palawani">Palawani</option>
-                                <option value="Sama">Sama</option>
-                                <option value="Sangil">Sangil</option>
-                                <option value="Subanon">Subanon</option>
-                                <option value="Tagakaolo">Tagakaolo</option>
-                                <option value="T boli">T boli</option>
-                                <option value="Talandig">Talandig</option>
-                                <option value="Tao-sug">Tao-sug</option>
-                                <option value="Teduary">Teduary</option>
-                                <option value="Ubo">Ubo</option>
-                                <option value="Yakan">Yakan</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="occupation" class="form-label">Occupation</label>
-                            <select class="form-control" id="editOccupation" name="occupation" required autofocus>
-                                <option>-select-</option>
-                                <option value="None">None</option>
-                                <option value="Accountant">Accountant</option>
-                                <option value="Assistant">Assistant</option>
-                                <option value="Baker">Baker</option>
-                                <option value="Barber">Barber</option>
-                                <option value="Bookkeeper">Bookkeeper</option>
-                                <option value="Businessman/woman">Businessman/woman</option>
-                                <option value="Butcher">Butcher</option>
-                                <option value="Carpenter">Carpenter</option>
-                                <option value="Cahsier">Cashier</option>
-                                <option value="Construction Worker">Construction Worker</option>
-                                <option value="Civil Servant">Civil Servant</option>
-                                <option value="Chef">Chef</option>
-                                <option value="Doctor">Doctor</option>
-                                <option value="Dentist">Dentist</option>
-                                <option value="Driver">Driver</option>
-                                <option value="Electrician">Electrician</option>
-                                <option value="Farmer">Farmer</option>
-                                <option value="Firefighter">Firefighter</option>
-                                <option value="Fisherman">Fisherman</option>
-                                <option value="Housekeeper">Housekeeper</option>
-                                <option value="Housewife">Housewife</option>
-                                <option value="Lawyer">Lawyer</option>
-                                <option value="Manager">Manager</option>
-                                <option value="Nurse">Nurse</option>
-                                <option value="Office Cleark">Office Clerk</option>
-                                <option value="Overseas Filipino Worker (OFW)">Overseas Filipino Worker (OFW)</option>
-                                <option value="Police Officer">Police Officer</option>
-                                <option value="Salesperson">Salesperson</option>
-                                <option value="Seaman/woman">Seaman/woman</option>
-                                <option value="Soldier">Soldier</option>
-                                <option value="Teacher">Teacher</option>
-                                <option value="Vendor">Vendor</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address</label>
-                            <select class="form-control" id="editAddress" name="address" required autofocus>
-                                <option>-select-</option>
-                                <option value="Purok Sto.Niño-Apo Beach">Purok Sto.Niño-Apo Beach</option>
-                                <option value="Purok Bayabas-Apo Beach">Purok Bayabas-Apo Beach</option>
-                                <option value="Purok Centro-Apo Beach">Purok Centro-Apo Beach</option>
-                                <option value="Purok Leytenians-Apo Beach">Purok Leytenians-Apo Beach</option>
-                                <option value="Purok Mahayahay-Apo Beach">Purok Mahayahay-Apo Beach</option>
-                                <option value="Purok Kalubihan-Apo Beach">Purok Kalubihan-Apo Beach</option>
-                                <option value="Purok Badjaoan-Apo Beach">Purok Badjaoan-Apo Beach</option>
-                                <option value="Purok Bonggahan">Purok Bonggahan</option>
-                                <option value="Purok Madasigon">Purok Madasigon</option>
-                                <option value="Purok kapayapaan-Amlo Subd">Purok kapayapaan-Amlo Subd</option>
-                                <option value="Purok Bougainvilla">Purok Bougainvilla</option>
-                                <option value="Purok Federation President">Purok Federation President</option>
-                                <option value="Purok Miranda">Purok Miranda</option>
-                                <option value="Purok Kaunlaran-Sto.Niño Village">Purok Kaunlaran-Sto.Niño Village</option>
-                                <option value="Purok Talisay-Ceboley Beach">Purok Talisay-Ceboley Beach</option>
-                                <option value="Purok Dapsap-Ceboley Beach">Purok Dapsap-Ceboley Beach</option>
-                                <option value="Purok Sampaguita-Ceboley Beach">Purok Sampaguita-Ceboley Beach</option>
-                                <option value="Purok Kagitingan-Kapihan">Purok Kagitingan-Kapihan</option>
-                                <option value="Purok Kaimito-Bagumbayan">Purok Kaimito-Bagumbayan</option>
-                                <option value="Purok Pakigdait-Bagumbayan">Purok Pakigdait-Bagumbayan</option>
-                                <option value="Purok Pagkakaisa-Bagumbayan">Purok Pagkakaisa-Bagumbayan</option>
-                                <option value="Purok Pag-asa-Bagumbayan">Purok Pag-asa-Bagumbayan</option>
-                                <option value="Purok Bagong Silang-sitio Doring Bendigo">Purok Bagong Silang-sitio Doring Bendigo</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="contactNumber" class="form-label">Contact Number</label autofocus>
-                            <input type="text" class="form-control" name="contact_number" id="editContactNumber" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Save changes</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </form>
+            <form id="editHouseholdForm" method="post" action="cap_edit_household.php">
+                <div class="modal-header">
+                <h5 class="modal-title" id="editHouseholdModalLabel">Edit Household</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                <input type="hidden" id="editHouseholdId" name="household_id">
+
+                <div class="mb-3">
+                    <label for="editHouseholdNumber" class="form-label">Household Number</label>
+                    <input type="text" class="form-control" id="editHouseholdNumber" name="household_number" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="editPurok" class="form-label">Purok</label>
+                    <select class="form-select" id="editPurok" name="purok_id" required>
+                        <option value="">-- Select Purok --</option>
+                            <?php
+                                $purok_result = $conn->query("SELECT * FROM puroks");
+                                while ($purok = $purok_result->fetch_assoc()) :
+                            ?>
+                                <option value="<?= $purok['purok_id']; ?>"><?= $purok['purok_name']; ?></option>
+                            <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="editHouseholdHead" class="form-label">Household Head</label>
+                    <select class="form-select" id="editHouseholdHead" name="household_head_id" required>
+                        <option value="">-- Select Household Head --</option>
+                            <?php
+                                $head_result = $conn->query("SELECT * FROM household_members WHERE archived = 0");
+                                while ($head = $head_result->fetch_assoc()) :
+                            ?>
+                                <option value="<?= $head['member_id']; ?>"><?= $head['first_name'] . ' ' . $head['last_name']; ?></option>
+                            <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="editContactNumber" class="form-label">Contact Number</label>
+                    <input type="text" class="form-control" id="editContactNumber" name="contact_number" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="editTotalMembers" class="form-label">Total Members</label>
+                    <input type="number" class="form-control" id="editTotalMembers" name="total_members" required>
+                </div>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" name="update_household" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
             </div>
         </div>
     </div>
 
-    <!-- Archive Modal -->
-    <div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
+    <!-- Archive Household Modal -->
+    <div class="modal fade" id="archiveHouseholdModal" tabindex="-1" aria-labelledby="archiveHouseholdModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="cap_archive_household.php" method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="archiveModalLabel">Archive Household</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        Are you sure you want to archive this household?
-                        <input type="hidden" id="archive-household-id" name="household_id">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Archive</button>
-                    </div>
-                </form>
+            <form id="archiveHouseholdForm" method="post" action="cap_archive_household.php">
+                <div class="modal-header">
+                <h5 class="modal-title" id="archiveHouseholdModalLabel">Archive Household</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                <input type="hidden" id="archiveHouseholdId" name="household_id">
+                <p>Are you sure you want to archive this household?</p>
+                <p class="text-muted">This action cannot be undone, but the household can be reactivated by an administrator if needed.</p>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" name="archive_household" class="btn btn-danger">Archive</button>
+                </div>
+            </form>
             </div>
         </div>
     </div>
-
-    <script>
-        //Edit
-        document.addEventListener('DOMContentLoaded', function () {
-            const editModal = document.getElementById('editModal');
-            editModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget; // Button that triggered the modal
-                const householdId = button.getAttribute('data-id'); // Get the household_id
-
-                // Populate the hidden input and other fields via AJAX or directly from the button's data attributes
-                document.getElementById('editHouseholdId').value = householdId;
-                document.getElementById('editLastName').value = button.getAttribute('data-last-name') || '';
-                document.getElementById('editFirstName').value = button.getAttribute('data-first-name') || '';
-                document.getElementById('editMiddleName').value = button.getAttribute('data-middle-name') || '';
-                document.getElementById('editGender').value = button.getAttribute('data-gender') || '';
-                document.getElementById('editcivil_status').value = button.getAttribute('data-civil-status') || '';
-                document.getElementById('editTribe').value = button.getAttribute('data-tribe') || '';
-                document.getElementById('editOccupation').value = button.getAttribute('data-occupation') || '';
-                document.getElementById('editAddress').value = button.getAttribute('data-address') || '';
-                document.getElementById('editContactNumber').value = button.getAttribute('data-contact-number') || '';
-            });
-        });
-
-        document.addEventListener('DOMContentLoaded', function () {
-            // Archive Modal Event Listener
-            const archiveModal = document.getElementById('archiveModal');
-            archiveModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const householdId = button.getAttribute('data-id');
-                document.getElementById('archive-household-id').value = householdId;
-            });
-        });
-
-        //View Household members
-        function loadHouseholdMembers(household_id) {
-            // Set a loading message in the modal
-            document.getElementById('householdMembersTableBody').innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
-
-            // Fetch household members from the server
-            fetch('fetch_household_members.php?household_id=' + household_id)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 200) {
-                        let rows = '';
-                        data.members.forEach(member => {
-                            rows += `
-                                <tr>
-                                    <td>${member.last_name}, ${member.first_name} ${member.middle_name || ''}</td>
-                                    <td>${member.birthdate}</td>
-                                    <td>${member.gender}</td>
-                                    <td>${member.relationship_to_head}</td>
-                                    <td>${member.occupation}</td>
-                                </tr>
-                            `;
-                        });
-                        document.getElementById('householdMembersTableBody').innerHTML = rows;
-                    } else {
-                        document.getElementById('householdMembersTableBody').innerHTML = `
-                            <tr><td colspan="5" class="text-center">${data.message}</td></tr>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching household members:', error);
-                    document.getElementById('householdMembersTableBody').innerHTML = `
-                        <tr><td colspan="5" class="text-center">Error loading household members. Please try again.</td></tr>
-                    `;
-                });
-        }
-
-        //Alert
-        setTimeout(() => {
-            const alert = document.querySelector('.alert');
-            if (alert) {
-                alert.classList.add('fade-out');
-            }
-        }, 5000); // Adjust the timeout (5 seconds)
-
-
-        // Age Calculation
-        function calculateAge() {
-                    const birthdate = new Date(document.getElementById('birthdate').value);
-                    const today = new Date();
-                    let age = today.getFullYear() - birthdate.getFullYear();
-                    const monthDifference = today.getMonth() - birthdate.getMonth();
-
-                    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthdate.getDate())) {
-                        age--;
-                    }
-                    document.getElementById('age').value = age;
-            }
-    </script>
 
     <!-- Include Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        //View Members Modal
+        function viewMembers(householdId) {
+            $.post("cap_fetch_household_members.php", { household_id: householdId }, function(data) {
+                $("#householdMembersTable").html(data);
+                $("#viewMembersModal").modal("show");
+            });
+        }
+
+        //Edit Modal
+        function openEditModal(householdId, householdNumber, purokId, householdHeadId, contactNumber, totalMembers) {
+        document.getElementById('editHouseholdId').value = householdId;
+        document.getElementById('editHouseholdNumber').value = householdNumber;
+        document.getElementById('editPurok').value = purokId;
+        document.getElementById('editHouseholdHead').value = householdHeadId;
+        document.getElementById('editContactNumber').value = contactNumber;
+        document.getElementById('editTotalMembers').value = totalMembers;
+        $('#editHouseholdModal').modal('show');
+        }
+
+        // Populate Archive Modal
+        function openArchiveModal(householdId) {
+        document.getElementById('archiveHouseholdId').value = householdId;
+        $('#archiveHouseholdModal').modal('show');
+        }
+
+    </script>
 </body>
 </html>

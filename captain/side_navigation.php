@@ -20,7 +20,7 @@
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="user_management.php" class="sidebar-link">
+            <a href="cap_user_management.php" class="sidebar-link">
                 <i class="fas fa-user-cog"></i>
                 <span>User Management</span>
             </a>
@@ -28,20 +28,20 @@
                 <i class="fas fa-house-user"></i>
                 <span>Household</span>
             </a>
-            <a href="household_members.php" class="sidebar-link">
+            <a href="cap_household_members.php" class="sidebar-link">
                 <i class="fas fa-users"></i>
                 <span>Resident</span>
             </a>
-            <a href="archive.php" class="sidebar-link">
+            <a href="cap_archive.php" class="sidebar-link">
                 <i class="fas fa-archive"></i>
                 <span>Archives Residents</span>
             </a>
-            <a href="reports.php" class="sidebar-link">
+            <a href="cap_reports.php" class="sidebar-link">
                 <i class="fas fa-file-alt"></i>
                 <span>Reports</span>
             </a>
             <hr></hr>
-            <a href="logout.php" class="sidebar-link">
+            <a href="cap_logout.php" class="sidebar-link">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
             </a>

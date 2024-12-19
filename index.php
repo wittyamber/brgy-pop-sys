@@ -1,3 +1,8 @@
+<?php
+    include 'config.php';
+    session_start();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -88,6 +93,15 @@
                 </div>
                 <div class="modal-body">
                     <img src="assets/images/brgylogo.png" alt="Barangay Logo" class="modal-logo">
+
+                    <!-- Error message -->
+                    <?php if (isset($_SESSION['error_message'])): ?>
+                        <div class="alert alert-danger" role="alert">
+                            <?php echo $_SESSION['error_message']; ?>
+                        </div>
+                        <?php unset($_SESSION['error_message']); ?>
+                    <?php endif; ?>
+                    
                     <form action="login.php" method="POST">
                         <div class="form-group mb-3">
                             <label for="username">Username</label>
@@ -116,5 +130,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <script>
+            var myModal = new bootstrap.Modal(document.getElementById('loginModal'), {});
+            myModal.show();
+        </script>
+    <?php endif; ?>
 </body>
 </html>

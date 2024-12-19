@@ -1,53 +1,29 @@
 <?php
-    include '../config.php';
+    require '../config.php';
     session_start();
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $last_name = $_POST['last_name'];
-        $first_name = $_POST['first_name'];
-        $middle_name = $_POST['middle_name'] ?? null;
-        $birthdate = $_POST['birthdate'];
-        $age = $_POST['age'];
-        $civil_status = $_POST['civil_status'];
-        $gender = $_POST['gender'];
-        $tribe = $_POST['tribe'] ?? null;
-        $occupation = $_POST['occupation'] ?? null;
-        $address = $_POST['address'];
-        $contact_number = $_POST['contact_number'] ?? null;
+    if (isset($_POST['add_household'])) {
+        $household_number = $_POST['household_number'];
+        $purok_id = $_POST['purok_id'];
+        $household_head_id = $_POST['household_head'];
+        $contact_number = $_POST['contact_number'];
+        $total_members = $_POST['total_members'];
 
-        $sql = "INSERT INTO households (
-                    last_name, first_name, middle_name, birthdate, age, civil_status, 
-                    gender, tribe, occupation, address, contact_number
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Adjust SQL query to match the table structure
+        $sql = "INSERT INTO household (household_number, purok_id, household_head_id, contact_number, total_members) 
+                VALUES (?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param(
-            "ssssissssss",
-            $last_name,
-            $first_name,
-            $middle_name,
-            $birthdate,
-            $age,
-            $civil_status,
-            $gender,
-            $tribe,
-            $occupation,
-            $address,
-            $contact_number
-        );
+        $stmt->bind_param("siisi", $household_number, $purok_id, $household_head_id, $contact_number, $total_members);
 
         if ($stmt->execute()) {
-            session_start();
-            $_SESSION['success_message'] = "Household head added successfully.";
-            //header("Location: household.php?msg=Household head added successfully");
+            $_SESSION['success_message'] = "Household added successfully!";
+            header("Location: cap_household.php");
+            exit();
         } else {
-            echo "Error: " . $stmt->error;
+            $_SESSION['error_message'] = "Error adding household: " . $conn->error;
+            error_log($conn->error); 
+            header("Location: cap_household.php");
+            exit();
         }
-        $stmt->close();
-        $conn->close();
-
-        // After successful addition:
-        
-        header("Location: cap_household.php");
-        exit();
     }
 ?>

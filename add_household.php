@@ -5,7 +5,7 @@
     if (isset($_POST['add_household'])) {
         $household_number = $_POST['household_number'];
         $purok_id = $_POST['purok_id'];
-        $household_head_id = $_POST['household_head_id'];
+        $household_head_id = $_POST['household_head'];
         $contact_number = $_POST['contact_number'];
         $total_members = $_POST['total_members'];
 
@@ -16,9 +16,14 @@
         $stmt->bind_param("siisi", $household_number, $purok_id, $household_head_id, $contact_number, $total_members);
 
         if ($stmt->execute()) {
-            echo "Household added successfully!";
+            $_SESSION['success_message'] = "Household added successfully!";
+            header("Location: household.php");
+            exit();
         } else {
-            echo "Error adding household: " . $conn->error;
+            $_SESSION['error_message'] = "Error adding household: " . $conn->error;
+            error_log($conn->error); // Log error if needed
+            header("Location: household.php");
+            exit();
         }
     }
 ?>

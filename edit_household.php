@@ -17,9 +17,13 @@
         $stmt->bind_param("siisii", $household_number, $purok_id, $household_head_id, $contact_number, $total_members, $household_id);
     
         if ($stmt->execute()) {
-            echo "Household updated successfully!";
+            $_SESSION['success_message'] = "Household updated successfully!";
+            header("Location: household.php");
+            exit();
         } else {
-            echo "Error updating household: " . $conn->error;
+            $_SESSION['error_message'] = "Error updating household: " . $conn->error;
+            header("Location: household.php");
+            exit();
         }
     }
 ?>

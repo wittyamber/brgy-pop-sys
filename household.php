@@ -1,6 +1,7 @@
 <?php
     include 'config.php';
     include 'side_nav.php';
+    include 'includes/alerts.php';
 
     // Fetch Data for Display
     $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -100,7 +101,8 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th style="width: 150px;">Household Number</th>
+                        <th style="width: 2%;">No.</th> <!-- Add a column for number -->
+                        <th style="width: 5%;">Household Number</th>
                         <th>Purok</th>
                         <th>Household Head</th>
                         <th>Total Members</th>
@@ -109,9 +111,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($result->num_rows > 0) : ?>
-                        <?php while ($row = $result->fetch_assoc()) : ?>
+                    <?php
+                    // Initialize the counter variable
+                    $counter = 1;
+                    if ($result->num_rows > 0) :
+                        while ($row = $result->fetch_assoc()) :
+                    ?>
                             <tr>
+                                <!-- Display the counter number -->
+                                <td><?= $counter++; ?></td> <!-- Increment the counter after displaying it -->
                                 <td><?= $row['household_number']; ?></td>
                                 <td><?= $row['purok_name']; ?></td>
                                 <td><?= $row['household_head']; ?></td>
@@ -133,7 +141,7 @@
                         <?php endwhile; ?>
                     <?php else : ?>
                         <tr>
-                            <td colspan="6" class="text-center">No households found.</td>
+                            <td colspan="7" class="text-center">No households found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -199,7 +207,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-success">Add Household</button>
+                        <button type="submit" class="btn btn-success" name="add_household">Add Household</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </form>
@@ -265,7 +273,7 @@
                     <select class="form-select" id="editHouseholdHead" name="household_head_id" required>
                         <option value="">-- Select Household Head --</option>
                             <?php
-                                $head_result = $conn->query("SELECT * FROM household_members");
+                                $head_result = $conn->query("SELECT * FROM household_members WHERE archived = 0");
                                 while ($head = $head_result->fetch_assoc()) :
                             ?>
                                 <option value="<?= $head['member_id']; ?>"><?= $head['first_name'] . ' ' . $head['last_name']; ?></option>

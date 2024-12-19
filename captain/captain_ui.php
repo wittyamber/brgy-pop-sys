@@ -1,24 +1,34 @@
 <?php
-    include ('../config.php');
     include 'side_navigation.php';
+    include '../config.php';
 
-    session_start();
-    if ($_SESSION['role'] !== 'Captain') {
-        header("Location: ../index.php");
-        exit();
-    }
+    $limit = 10; 
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; 
+    $offset = ($page - 1) * $limit; 
 
-    // Fetch totals
+    $count_query = "SELECT COUNT(*) AS total FROM barangay_officials WHERE status = 'Active'";
+    $count_result = mysqli_query($conn, $count_query);
+    $total_records = mysqli_fetch_assoc($count_result)['total'];
+
+    $total_pages = ceil($total_records / $limit);
+
+    $query = "SELECT name, position, date_assigned 
+    FROM barangay_officials 
+    WHERE status = 'Active' 
+    LIMIT $limit OFFSET $offset";
+    $barangay_officials = mysqli_query($conn, $query);
+
+
     $total_population = $conn->query(" 
         SELECT COUNT(DISTINCT hm.member_id) AS total
         FROM household_members hm
-        INNER JOIN households h ON hm.household_id = h.household_id  
+        INNER JOIN household h ON hm.household_id = h.household_id  
         WHERE hm.archived = 0 AND h.archived = 0
     ")->fetch_assoc()['total'];
 
-    $total_households = $conn->query("SELECT COUNT(*) AS total FROM households WHERE archived = 0")->fetch_assoc()['total'];
+    $total_households = $conn->query("SELECT COUNT(*) AS total FROM household WHERE archived = 0 AND status = 'Active'")->fetch_assoc()['total'];
 
-    $total_senior_citizens = (int) $conn->query("
+    $total_senior_citizens = (int) $conn->query(" 
         SELECT COALESCE(COUNT(*), 0) AS total 
         FROM household_members 
         WHERE archived = 0 
@@ -29,255 +39,279 @@
     $total_females = $conn->query("SELECT COUNT(*) AS total FROM household_members WHERE archived = 0 AND gender = 'Female'")->fetch_assoc()['total'];
     $total_teens = $conn->query("SELECT COUNT(*) AS total FROM household_members WHERE archived = 0 AND TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 13 AND 19")->fetch_assoc()['total'];
 
-    // Fetch most populated purok/address
     $pie_data_query = "
-        SELECT address, COUNT(*) AS count 
-        FROM households 
-        WHERE archived = 0 
-        GROUP BY address";
+        SELECT p.purok_name AS purok, COUNT(hm.member_id) AS count
+        FROM household_members hm
+        INNER JOIN puroks p ON hm.purok_id = p.purok_id
+        WHERE hm.archived = 0
+        GROUP BY p.purok_name";
     $result = mysqli_query($conn, $pie_data_query);
 
     $pie_data = [];
-    $most_populated_purok = null; // Initialize variable for most populated purok
+    $most_populated_purok = null; 
 
-    // Check if the query executed successfully
     if ($result) {
-        // Fetch data and populate pie_data
         while ($row = mysqli_fetch_assoc($result)) {
             $pie_data[] = [
-                'address' => $row['address'],
+                'purok' => $row['purok'],
                 'count' => $row['count']
             ];
 
-            // Set the most populated purok based on highest count
             if ($most_populated_purok === null || $row['count'] > $most_populated_purok['count']) {
                 $most_populated_purok = $row;
             }
         }
-    } else {
-        // Handle query error (optional)
-        echo "Error executing query: " . mysqli_error($conn);
     }
 
-    // Convert to JSON for JavaScript
     $pie_data_json = json_encode($pie_data);
 
-    // Fetch barangay officials
-    $barangay_officials = $conn->query("SELECT name, position, date_assigned FROM barangay_officials");
+    $household_purok_query = "
+        SELECT p.purok_name AS purok, COUNT(h.household_id) AS count
+        FROM household h
+        INNER JOIN puroks p ON h.purok_id = p.purok_id
+        WHERE h.archived = 0
+        GROUP BY p.purok_name
+    ";
+    $household_purok_result = mysqli_query($conn, $household_purok_query);
 
-    // Pagination settings
-    $limit = 5; // Number of rows per page
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $offset = ($page - 1) * $limit;
+    $household_purok_data = [];
+    if ($household_purok_result) {
+        while ($row = mysqli_fetch_assoc($household_purok_result)) {
+            $household_purok_data[] = [
+                'purok' => $row['purok'],
+                'count' => $row['count']
+            ];
+        }
+    }
 
-    // Query for total records
-    $total_query = "SELECT COUNT(*) AS total FROM barangay_officials";
-    $total_result = mysqli_query($conn, $total_query);
-    $total_row = mysqli_fetch_assoc($total_result);
-    $total_records = $total_row['total'];
+    $household_purok_data_json = json_encode($household_purok_data);
 
-    // Query for paginated records
-    $query = "SELECT name, position, date_assigned FROM barangay_officials LIMIT $limit OFFSET $offset";
-    $result = mysqli_query($conn, $query);
+    $barangay_officials_query = "SELECT name, position, date_assigned FROM barangay_officials WHERE status = 'Active'";
+    $barangay_officials = mysqli_query($conn, $barangay_officials_query);
 
-    // Calculate total pages
-    $total_pages = ceil($total_records / $limit);
+    if (!$barangay_officials) {
+        die("Query failed: " . mysqli_error($conn));
+    }
+
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Captain Dashboard</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBPMMS | Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="../css/dashboard.css">
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="container">
+        <h2 class="mb-4 text-center">Dashboard</h2>
+        
         <!-- Summary Section -->
-        <div class="row">
-            <div class="summary-section">
-                <div class="card summary-card text-center">
+        <div class="row text-center">
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h5>Total Population</h5>
                         <p><?= $total_population; ?></p>
                     </div>
                 </div>
-            
-                <div class="card summary-card text-center">
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h5>Total Households</h5>
                         <p><?= $total_households; ?></p>
                     </div>
                 </div>
-            
-                <div class="card summary-card text-center">
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h5>Total Senior Citizens</h5>
                         <p><?= $total_senior_citizens; ?></p>
                     </div>
                 </div>
-                <div class="card summary-card text-center">
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h5>Total Males</h5>
                         <p><?= $total_males; ?></p>
                     </div>
                 </div>
-                <div class="card summary-card text-center">
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h5>Total Females</h5>
                         <p><?= $total_females; ?></p>
                     </div>
                 </div>
-                <div class="card summary-card text-center">
-                    <div class="card-body">
-                        <h5>Total Teens</h5>
-                        <p><?= $total_teens; ?></p>
-                    </div>
-                </div>
-    
-                <div class="card summary-card text-center">
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h5>Most Populated Purok</h5>
-                        <?php if ($most_populated_purok && isset($most_populated_purok['address']) && isset($most_populated_purok['count'])): ?>
-                            <p><?= htmlspecialchars($most_populated_purok['address']); ?> (<?= htmlspecialchars($most_populated_purok['count']); ?>)</p>
-                        <?php else: ?>
-                            <p>No data available for the most populated purok.</p>
-                        <?php endif; ?>
+                        <p>
+                            <?php if ($most_populated_purok): ?>
+                                <?= htmlspecialchars($most_populated_purok['purok']); ?> (<?= htmlspecialchars($most_populated_purok['count']); ?>)
+                            <?php else: ?>
+                                No data available
+                            <?php endif; ?>
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Pie Chart -->
-        <div class="chart-container" style="max-width: 400px; margin: auto;">
+        <!-- Residents Pie Chart -->
+        <div class="chart-container mb-4" style="max-width: 600px; margin: auto;">
             <canvas id="purokChart"></canvas>
+        </div>
+
+        <!-- Households Per Purok -->
+        <div class="chart-container mb-4" style="max-width: 600px; margin: auto;">
+            <canvas id="householdChart"></canvas>
         </div>
 
         <!-- Barangay Officials Section -->
         <div class="mt-5">
             <h3 class="text-center">Barangay Officials</h3>
-            <!-- <button class="btn btn-primary mb-3" onclick="window.location.href='barangay_officials.php';">Manage Barangay Officials</button> -->
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Position</th>
-                        <th>Date Assigned</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($official = $barangay_officials->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= $official['name']; ?></td>
-                        <td><?= $official['position']; ?></td>
-                        <td><?= $official['date_assigned']; ?></td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+            <button class="btn btn-primary mb-3" onclick="window.location.href='barangay_officials.php';">Manage Barangay Officials</button>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th>Date Assigned</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($official = $barangay_officials->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= $official['name']; ?></td>
+                            <td><?= $official['position']; ?></td>
+                            <td><?= $official['date_assigned']; ?></td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
 
-            <!-- Pagination Links -->
+            <!-- Pagination -->
             <nav>
-                <ul   ul class="pagination justify-content-center">
-                    <?php if ($page > 1): ?>
-                    <li class="page-item">
-                        <a class="page-link" href="#" data-page="<?= $page - 1; ?>">Previous</a>
-                    </li>
-                    <?php endif; ?>
-
-                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?= $i == $page ? 'active' : ''; ?>">
-                        <a class="page-link" href="#" data-page="<?= $i; ?>"><?= $i; ?></a>
-                    </li>
+                <ul class="pagination justify-content-center">
+                    <?php for ($i = 1; $i <= $total_pages; $i++) : ?>
+                        <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                            <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                        </li>
                     <?php endfor; ?>
-
-                    <?php if ($page < $total_pages): ?>
-                    <li class="page-item">
-                        <a class="page-link" href="#" data-page="<?= $page + 1; ?>">Next</a>
-                    </li>
-                    <?php endif; ?>
                 </ul>
             </nav>
         </div>
     </div>
 
-        <!-- Include Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            // Fetch the data from the PHP variable
-            const pieData = <?= $pie_data_json; ?>;  
-            
-            const labels = pieData.map(data => data.address);  
-            const counts = pieData.map(data => data.count);  
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const colors = [
+            '#007bff',  
+            '#28a745',  
+            '#dc3545',  
+            '#ffc107',  
+            '#17a2b8',  
+            '#6c757d'  
+        ];
 
-            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#7CEA9C', '#5B4E77', '#FF008C', '#FFDD00', '#808080', '#008000', '#E0FFFF', '#DC143C', '#708090', '#8B4513', '#FF69B4', '#8A2BE2', '#6495ED', '#2E8B57', '#FF6347', '#C0C0C0', '#800000', '#FFB6C1'];
-
-            const dynamicColors = labels.map((label, index) => colors[index % colors.length]);
-
-            const ctx = document.getElementById('purokChart').getContext('2d');
-
-            const data = {
-                labels: labels,  
+    function createBootstrapChart(elementId, data, title, xAxisLabel, yAxisLabel) {
+        const ctx = document.getElementById(elementId).getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(item => item.purok),
                 datasets: [{
-                    data: counts,  
-                    backgroundColor: dynamicColors,  
+                    label: title,
+                    data: data.map(item => item.count),
+                    backgroundColor: data.map((_, index) => colors[index % colors.length]),
+                    borderColor: data.map((_, index) => colors[index % colors.length]),
+                    borderWidth: 1
                 }]
-            };
-
-            const config = {
-                type: 'pie',
-                data: data,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true, 
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: title,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { 
+                            display: true, 
+                            text: xAxisLabel,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { 
+                            display: true, 
+                            text: yAxisLabel,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    }
                 }
-            };
+            }
+        });
+    }
 
-            new Chart(ctx, config);
+    // Population Chart
+    const pieData = <?= $pie_data_json; ?>;
+    createBootstrapChart(
+        'purokChart', 
+        pieData, 
+        'Population Count by Purok', 
+        'Purok', 
+        'Population Count'
+    );
 
-
-            //Pagination
-            document.addEventListener('DOMContentLoaded', function () {
-                const paginationLinks = document.querySelectorAll('.page-link');
-                const officialsContainer = document.querySelector('#barangay-officials-container');
-
-                paginationLinks.forEach(link => {
-                    link.addEventListener('click', function (e) {
-                        e.preventDefault(); // Prevent page reload
-                        const page = this.getAttribute('data-page'); // Get the page number
-
-                        // Fetch data for the selected page
-                        fetch(`captain_ui.php?page=${page}`)
-                            .then(response => response.text())
-                            .then(html => {
-                                // Replace the content of the container
-                                officialsContainer.innerHTML = html;
-
-                                // Reinitialize the event listeners for the new links
-                                const newLinks = document.querySelectorAll('.page-link');
-                                newLinks.forEach(newLink => {
-                                    newLink.addEventListener('click', function (e) {
-                                        e.preventDefault();
-                                        const newPage = this.getAttribute('data-page');
-                                        fetchData(newPage);
-                                    });
-                                });
-                            })
-                            .catch(err => console.error('Error fetching data:', err));
-                    });
-                });
-
-                function fetchData(page) {
-                    fetch(`captain_ui.php?page=${page}`)
-                        .then(response => response.text())
-                        .then(html => {
-                            officialsContainer.innerHTML = html;
-                        })
-                        .catch(err => console.error('Error:', err));
-                }
-            });
-
-        </script>
-    </div>
+    // Household Chart
+    const householdPurokData = <?= $household_purok_data_json; ?>;
+    createBootstrapChart(
+        'householdChart', 
+        householdPurokData, 
+        'Household Count by Purok', 
+        'Purok', 
+        'Household Count'
+    );
+    </script>
 </body>
 </html>
